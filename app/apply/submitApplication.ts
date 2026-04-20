@@ -3,6 +3,10 @@
 import { createClient } from '@supabase/supabase-js';
 
 export async function submitApplicationAction(formData: any) {
+    if (!formData || !formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.clubName || !formData.companyName || !formData.title || !formData.bio || !formData.coreSkills) {
+        return { success: false, message: 'Invalid submission: Missing required fields.' };
+    }
+
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
