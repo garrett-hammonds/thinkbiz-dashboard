@@ -43,6 +43,9 @@ export async function submitApplicationAction(formData: any) {
         }]);
 
     if (error) {
+        if (error.code === '23505') {
+            return { success: false, message: 'An application with this email already exists.' };
+        }
         console.error('Error inserting application:', error);
         return { success: false, message: 'Failed to submit application.' };
     }
