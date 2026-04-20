@@ -37,11 +37,19 @@ export default function ApplyPage() {
 
     const handleNext = () => {
         const { firstName, lastName, email, phone, clubName } = formData;
-        if (firstName && lastName && email && phone && clubName) {
-            setStep(2);
-        } else {
+        
+        if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim() || !clubName) {
             alert('Please fill out all fields before proceeding.');
+            return;
         }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            alert('Please enter a valid email address.');
+            return;
+        }
+
+        setStep(2);
     };
 
     const handleBack = () => {
