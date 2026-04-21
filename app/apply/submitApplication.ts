@@ -3,7 +3,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 export async function submitApplicationAction(formData: any) {
-    if (!formData || !formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.clubName || !formData.companyName || !formData.title || !formData.bio || !formData.coreSkills) {
+    if (!formData || !formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.clubId || !formData.companyName || !formData.title || !formData.bio || !formData.coreSkills) {
         return { success: false, message: 'Invalid submission: Missing required fields.' };
     }
 
@@ -19,7 +19,7 @@ export async function submitApplicationAction(formData: any) {
             last_name: formData.lastName,
             email: formData.email,
             phone: formData.phone,
-            club_name: formData.clubName,
+            club_id: formData.clubId,
             company_name: formData.companyName,
             title: formData.title,
             bio: formData.bio,

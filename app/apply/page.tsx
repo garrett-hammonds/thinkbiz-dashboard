@@ -10,7 +10,7 @@ export default function ApplyPage() {
         lastName: '',
         email: '',
         phone: '',
-        clubName: '',
+        clubId: '',
         companyName: '',
         title: '',
         bio: '',
@@ -18,13 +18,13 @@ export default function ApplyPage() {
     });
     const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [clubs, setClubs] = useState<{ name: string }[]>([]);
+    const [clubs, setClubs] = useState<{ id: string, name: string }[]>([]);
     const [isLoadingClubs, setIsLoadingClubs] = useState(true);
 
     useEffect(() => {
         const fetchClubs = async () => {
             const supabase = createClient();
-            const { data, error } = await supabase.from('clubs').select('name').order('name');
+            const { data, error } = await supabase.from('clubs').select('id, name').order('name');
             if (data) {
                 setClubs(data);
             } else if (error) {
@@ -36,9 +36,9 @@ export default function ApplyPage() {
     }, []);
 
     const handleNext = () => {
-        const { firstName, lastName, email, phone, clubName } = formData;
+        const { firstName, lastName, email, phone, clubId } = formData;
         
-        if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim() || !clubName) {
+        if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim() || !clubId) {
             alert('Please fill out all fields before proceeding.');
             return;
         }
@@ -103,10 +103,10 @@ export default function ApplyPage() {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Club Name</label>
-                            <select name="clubName" value={formData.clubName} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2 text-black" required disabled={isLoadingClubs}>
+                            <select name="clubId" value={formData.clubId} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2 text-black" required disabled={isLoadingClubs}>
                                 <option value="">{isLoadingClubs ? 'Loading clubs...' : 'Select a club'}</option>
                                 {clubs.map((club, idx) => (
-                                    <option key={idx} value={club.name}>{club.name}</option>
+                                    <option key={idx} value={club.id}>{club.name}</option>
                                 ))}
                             </select>
                         </div>
