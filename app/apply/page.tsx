@@ -80,71 +80,75 @@ export default function ApplyPage() {
 
     return (
         <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gray-50">
-            <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8">
-                <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Apply for ThinkBiz</h1>
+            <div className="w-full max-w-md border-4 border-black rounded-xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-white p-8">
+                {(step === 1 || step === 2) && (
+                    <div className="text-xs font-bold uppercase mb-2 text-center text-gray-500">Step {step} of 2</div>
+                )}
+                <h1 className="text-3xl font-black mb-8 text-center text-black uppercase tracking-tight">Apply for ThinkBiz</h1>
                 
                 {step === 1 && (
-                    <div className="space-y-4">
+                    <div className="space-y-5">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                            <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2 text-black" required />
+                            <label className="block text-sm font-bold text-black mb-2 uppercase">First Name</label>
+                            <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} className="w-full border-2 border-black rounded-lg p-3 text-black focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all font-medium" required />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                            <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2 text-black" required />
+                            <label className="block text-sm font-bold text-black mb-2 uppercase">Last Name</label>
+                            <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} className="w-full border-2 border-black rounded-lg p-3 text-black focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all font-medium" required />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                            <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2 text-black" required />
+                            <label className="block text-sm font-bold text-black mb-2 uppercase">Email</label>
+                            <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full border-2 border-black rounded-lg p-3 text-black focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all font-medium" required />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                            <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2 text-black" required />
+                            <label className="block text-sm font-bold text-black mb-2 uppercase">Phone</label>
+                            <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="w-full border-2 border-black rounded-lg p-3 text-black focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all font-medium" required />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Club Name</label>
-                            <select name="clubId" value={formData.clubId} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2 text-black" required disabled={isLoadingClubs}>
+                            <label className="block text-sm font-bold text-black mb-2 uppercase">Club Name</label>
+                            <select name="clubId" value={formData.clubId} onChange={handleChange} className="w-full border-2 border-black rounded-lg p-3 text-black focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all font-medium" required disabled={isLoadingClubs}>
                                 <option value="">{isLoadingClubs ? 'Loading clubs...' : 'Select a club'}</option>
                                 {clubs.map((club, idx) => (
                                     <option key={idx} value={club.id}>{club.name}</option>
                                 ))}
                             </select>
                         </div>
-                        <button onClick={handleNext} className="w-full bg-blue-600 text-white rounded-md p-2 hover:bg-blue-700 transition">Next Step</button>
+                        <button onClick={handleNext} className="w-full bg-blue-600 text-white font-bold text-lg border-2 border-black rounded-lg p-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:translate-x-1 active:shadow-none transition-all mt-4">Next Step</button>
                     </div>
                 )}
 
                 {step === 2 && (
-                    <form onSubmit={submitApplication} className="space-y-4">
+                    <form onSubmit={submitApplication} className="space-y-5">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
-                            <input type="text" name="companyName" value={formData.companyName} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2 text-black" required />
+                            <label className="block text-sm font-bold text-black mb-2 uppercase">Company Name</label>
+                            <input type="text" name="companyName" value={formData.companyName} onChange={handleChange} className="w-full border-2 border-black rounded-lg p-3 text-black focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all font-medium" required />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                            <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2 text-black" required />
+                            <label className="block text-sm font-bold text-black mb-2 uppercase">Title</label>
+                            <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full border-2 border-black rounded-lg p-3 text-black focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all font-medium" required />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-                            <textarea name="bio" value={formData.bio} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2 h-24 resize-none text-black" maxLength={300} required />
+                            <label className="block text-sm font-bold text-black mb-2 uppercase">Bio</label>
+                            <textarea name="bio" value={formData.bio} onChange={handleChange} className="w-full border-2 border-black rounded-lg p-3 h-28 resize-none text-black focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all font-medium" maxLength={300} required />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Core Skills <span className="text-gray-500 font-normal">(comma separated)</span></label>
-                            <input type="text" name="coreSkills" value={formData.coreSkills} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2 text-black" required />
+                            <label className="block text-sm font-bold text-black mb-2 uppercase">Core Skills <span className="text-gray-500 font-normal normal-case">(comma separated)</span></label>
+                            <input type="text" name="coreSkills" value={formData.coreSkills} onChange={handleChange} className="w-full border-2 border-black rounded-lg p-3 text-black focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all font-medium" required />
                         </div>
-                        <div className="flex space-x-4">
-                            <button type="button" onClick={handleBack} className="w-1/3 bg-gray-200 text-gray-800 rounded-md p-2 hover:bg-gray-300 transition">Back</button>
-                            <button type="submit" disabled={isSubmitting} className="w-2/3 bg-blue-600 text-white rounded-md p-2 hover:bg-blue-700 transition disabled:opacity-50">
-                                {isSubmitting ? 'Submitting...' : 'Submit Application'}
+                        <div className="flex space-x-4 pt-4">
+                            <button type="button" onClick={handleBack} className="w-1/3 bg-white text-black font-bold text-lg border-2 border-black rounded-lg p-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:translate-x-1 active:shadow-none transition-all">Back</button>
+                            <button type="submit" disabled={isSubmitting} className="w-2/3 bg-blue-600 text-white font-bold text-lg border-2 border-black rounded-lg p-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:translate-x-1 active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                {isSubmitting ? 'Submitting...' : 'Submit'}
                             </button>
                         </div>
                     </form>
                 )}
 
                 {step === 3 && (
-                    <div className="text-center">
-                        <h2 className="text-xl font-semibold text-green-600 mb-4">Application Submitted!</h2>
-                        <p className="text-gray-600">A director will review your details and be in touch soon.</p>
+                    <div className="text-center py-6">
+                        <h2 className="text-3xl font-black text-black mb-4 uppercase tracking-tight">Success!</h2>
+                        <div className="border-t-4 border-black w-16 mx-auto mb-4"></div>
+                        <p className="text-gray-800 font-medium text-lg">Your application has been submitted. A director will review your details and be in touch soon.</p>
                     </div>
                 )}
             </div>

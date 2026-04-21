@@ -1,15 +1,16 @@
 'use server';
 
 import { createServerClient } from '@supabase/ssr';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 export async function approveApplication(applicationId: string) {
   try {
     const cookieStore = await cookies();
 
-    const supabaseAdmin = createServerClient(
+    const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
           get(name: string) {
@@ -32,6 +33,14 @@ export async function approveApplication(applicationId: string) {
         },
       }
     );
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, message: 'Unauthorized' };
+    }
+
+    const supabaseAdmin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
     const { data: application, error } = await supabaseAdmin
       .from('pending_applications')
