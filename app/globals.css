@@ -5,48 +5,70 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
-  --color-primary: var(--primary);
+  
+  /* Mapped ThinkBiz Brand Colors */
+  --color-primary: var(--color-primary);
+  --color-primary-dark: var(--color-primary-dark);
+  --color-accent: var(--color-accent);
+  
+  /* Preserved UI Elements */
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-border: var(--border);
-  --color-ring: var(--ring);
+  --color-ring: var(--color-primary); /* Linked focus ring to primary teal */
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --font-sans: var(--font-geist-sans);
+  
+  /* Mapped ThinkBiz Typography */
+  --font-sans: var(--font-family-base);
   --font-mono: var(--font-geist-mono);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  
+  /* Mapped ThinkBiz Radii */
+  --radius-sm: calc(var(--radius-md) - 2px);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: calc(var(--radius-lg) + 4px);
+
+  /* Custom Utilities */
+  --shadow-card: var(--shadow-card);
 }
 
 :root {
+  /* ThinkBiz Design Tokens */
+  --color-primary: #21bdc8;
+  --color-primary-dark: #086788;
+  --color-accent: #f0c808;
+  --font-family-base: 'Lato', system-ui, sans-serif;
+  --section-padding-y: 5rem;
+  --container-max-width: 1280px;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  --shadow-card: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(33,189,200,.08);
+  --transition-base: 200ms ease;
+
+  /* Base Structural Variables */
   --background: #f5f6f8;
   --foreground: #1a1d23;
   --card: #ffffff;
   --card-foreground: #1a1d23;
-  --primary: #1a73e8;
   --primary-foreground: #ffffff;
   --secondary: #f0f2f5;
   --secondary-foreground: #1a1d23;
   --muted: #f0f2f5;
   --muted-foreground: #6b7280;
-  --accent: #e8f0fe;
-  --accent-foreground: #1a73e8;
+  --accent-foreground: #1a1d23; /* Dark text on yellow accent */
   --border: #e2e5ea;
-  --ring: #1a73e8;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --radius: 0.625rem;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-family-base);
+  transition: all var(--transition-base);
 }
