@@ -63,7 +63,7 @@ export async function approveApplication(applicationId: string) {
     const newUserId = inviteData.user.id;
 
     const { error: insertError } = await supabaseAdmin.from('members').insert({
-      id: newUserId,
+      auth_user_id: newUserId,
       current_club_id: application.club_id,
       first_name: application.first_name,
       last_name: application.last_name,
@@ -71,7 +71,7 @@ export async function approveApplication(applicationId: string) {
       company_name: application.company_name,
       title: application.title,
       bio: application.bio,
-      core_skills: application.core_skills,
+      core_skills: application.core_skills ? application.core_skills.split(',').map((skill: string) => skill.trim()) : [],
     });
 
     if (insertError) {
