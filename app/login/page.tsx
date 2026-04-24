@@ -1,54 +1,45 @@
-'use client';
+import { login } from './actions';
 
-// Augment the Window interface
-declare global {
-  interface Window {
-    Outseta?: {
-      on: (event: string, callback: (data: any) => void) => void;
-    };
-  }
-}
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ message?: string }>;
+}) {
+  const { message } = await searchParams;
 
-export default function UnifiedAuthPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4 sm:p-8">
-      
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Welcome to ThinkBiz</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Log in to your dashboard or join the network.</p>
-      </div>
-
-      {/* Main Container: Stacks vertically on mobile, side-by-side on medium screens and up */}
-      <div className="flex w-full max-w-5xl flex-col gap-8 md:flex-row">
+    <main className="flex min-h-screen items-center justify-center p-4">
+      <div className="w-full max-w-sm border-4 border-black rounded-xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-white p-8">
+        <h1 className="font-bold text-2xl mb-6 text-center text-black">ThinkBiz Director Login</h1>
         
-        {/* Left Column: Sign Up */}
-        <div className="flex-1 rounded-lg border border-border bg-card p-6 shadow-sm">
-          <h2 className="mb-6 text-center text-xl font-semibold text-foreground">Create an Account</h2>
-          <div 
-            data-o-auth="1"
-            data-widget-mode="register"
-            data-plan-uid="rQVqJlm6"
-            data-plan-payment-term="month"
-            data-skip-plan-options="true"
-            data-mode="embed"
-          ></div>
-        </div>
+        <form action={login} className="flex flex-col gap-4">
+          <input
+            type="email"
+            name="email"
+            placeholder="Email"
+            required
+            className="w-full border-2 border-black rounded-lg p-3 font-medium text-black"
+          />
+          <input
+            type="password"
+            name="password"
+            placeholder="Password"
+            required
+            className="w-full border-2 border-black rounded-lg p-3 font-medium text-black"
+          />
+          <button
+            type="submit"
+            className="bg-blue-600 text-white font-bold text-lg border-2 border-black rounded-lg p-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:translate-x-1 active:shadow-none transition-all"
+          >
+            Submit
+          </button>
+        </form>
 
-        {/* Visual Divider (Only visible on desktop) */}
-        <div className="hidden flex-col items-center justify-center md:flex">
-          <div className="h-full w-px bg-border"></div>
-        </div>
-
-        {/* Right Column: Log In */}
-        <div className="flex-1 rounded-lg border border-border bg-card p-6 shadow-sm">
-          <h2 className="mb-6 text-center text-xl font-semibold text-foreground">Log In</h2>
-          <div 
-            data-o-auth="1"
-            data-mode="embed"
-            data-widget-mode="login"
-          ></div>
-        </div>
-
+        {message && (
+          <div className="mt-4 text-red-600 font-bold text-center">
+            {message}
+          </div>
+        )}
       </div>
     </main>
   );

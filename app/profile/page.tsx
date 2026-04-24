@@ -1,16 +1,11 @@
-import { cookies } from "next/headers";
 import { Navbar } from "@/components/navbar";
-import { OutsetaProfile } from "@/components/outseta-profile";
 
-export default async function ProfilePage() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("outseta_token")?.value;
-
+export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="flex flex-col items-center justify-center p-4">
-        <OutsetaProfile accessToken={token} />
+        <h1 className="text-2xl font-bold mt-8">Profile Page Coming Soon</h1>
       </main>
     </div>
   );
