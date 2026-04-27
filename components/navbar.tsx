@@ -1,12 +1,24 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { User, LifeBuoy, Menu, X } from "lucide-react";
+import { User, LifeBuoy } from "lucide-react";
+import { createClient } from "@/utils/supabase/server";
+import { MobileMenu } from "./mobile-menu";
 
-export function Navbar() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+export async function Navbar() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let canViewApps = false;
+
+  if (user) {
+    const { data: member } = await supabase
+      .from('members')
+      .select('is_admin, role')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+
+    canViewApps = member?.is_admin || member?.role === 'club_director';
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card">
@@ -32,6 +44,15 @@ export function Navbar() {
         </Link>
 
         <div className="hidden md:flex items-center gap-1 sm:gap-2">
+          {canViewApps && (
+            <Link
+              href="/dashboard/applications"
+              className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:inline-flex"
+            >
+              Applications
+            </Link>
+          )}
+
           <Link
             href="/log"
             className="hidden rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:inline-flex"
@@ -56,43 +77,8 @@ export function Navbar() {
           </a>
         </div>
 
-        <button
-          className="md:hidden p-2 text-muted-foreground"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        >
-          {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        <MobileMenu canViewApps={canViewApps} />
       </nav>
-
-      {isMobileMenuOpen && (
-        <div className="md:hidden border-t p-4 flex flex-col gap-4">
-          <Link
-            href="/log"
-            className="flex w-full justify-start items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            Submit Report
-          </Link>
-
-          <Link
-            href="/support"
-            className="flex w-full justify-start items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            <LifeBuoy className="h-4 w-4" aria-hidden="true" />
-            Support
-          </Link>
-
-          <a
-            href="/profile"
-            className="flex w-full justify-start items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            <User className="h-4 w-4" aria-hidden="true" />
-            <span>My Account</span>
-          </a>
-        </div>
-      )}
     </header>
   );
 }
