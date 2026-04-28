@@ -1,5 +1,6 @@
 import { login } from './actions';
 import Link from 'next/link';
+import { Navbar } from '@/components/navbar';
 
 export default async function LoginPage({
   searchParams,
@@ -9,8 +10,10 @@ export default async function LoginPage({
   const { message } = await searchParams;
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white rounded-xl border border-gray-100 shadow-card p-8 transition-all duration-200">
+    <div className="min-h-screen bg-background flex flex-col">
+      <Navbar />
+      <main className="flex flex-1 items-center justify-center p-4">
+        <div className="w-full max-w-sm bg-white rounded-xl border border-gray-100 shadow-card p-8 transition-all duration-200">
         <h1 className="text-3xl font-bold leading-snug text-foreground text-center mb-6">Welcome Back</h1>
         
         <form action={login} className="flex flex-col gap-4">
@@ -45,7 +48,8 @@ export default async function LoginPage({
             {message}
           </div>
         )}
-      </div>
-    </main>
+        </div>
+      </main>
+    </div>
   );
 }

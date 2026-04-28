@@ -13,18 +13,18 @@ export async function Navbar() {
   if (user) {
     const { data: member } = await supabase
       .from('members')
-      .select('is_admin, role')
+      .select('is_admin, club_director')
       .eq('auth_user_id', user.id)
       .maybeSingle();
 
-    canViewApps = member?.is_admin || member?.role === 'club_director';
+    canViewApps = member?.is_admin || member?.club_director;
   }
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card">
       <nav className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
-          href="/dashboard"
+          href={user ? "/dashboard" : "/login"}
           className="flex items-center gap-2 text-foreground transition-opacity hover:opacity-80"
         >
           <Image
@@ -53,12 +53,14 @@ export async function Navbar() {
             </Link>
           )}
 
-          <Link
-            href="/log"
-            className="hidden rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:inline-flex"
-          >
-            Submit Report
-          </Link>
+          {user && (
+            <Link
+              href="/log"
+              className="hidden rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:inline-flex"
+            >
+              Submit Report
+            </Link>
+          )}
 
           <Link
             href="/support"
@@ -68,16 +70,18 @@ export async function Navbar() {
             Support
           </Link>
 
-          <a
-            href="/profile"
-            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <User className="h-4 w-4" aria-hidden="true" />
-            <span className="hidden sm:inline">My Account</span>
-          </a>
+          {user && (
+            <a
+              href="/profile"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <User className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">My Account</span>
+            </a>
+          )}
         </div>
 
-        <MobileMenu canViewApps={canViewApps} />
+        <MobileMenu canViewApps={canViewApps} isLoggedIn={!!user} />
       </nav>
     </header>
   );
