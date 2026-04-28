@@ -16,11 +16,11 @@ All colors are configured in the Tailwind theme. Use these specific utility name
 
 ## 3. Typography
 The site uses **Lato** as the base font.
-- **Headings:** Must ALWAYS use the `secondary` color. 
-  - *H1:* `text-4xl font-black leading-tight tracking-tight text-secondary`
-  - *H2:* `text-3xl font-bold leading-snug text-secondary`
-  - *H3:* `text-2xl font-bold leading-snug text-secondary`
-  - *H4:* `text-xl font-semibold leading-normal text-secondary`
+- **Headings:** Must ALWAYS use the `foreground` color for high contrast. 
+  - *H1:* `text-4xl font-black leading-tight tracking-tight text-foreground`
+  - *H2:* `text-3xl font-bold leading-snug text-foreground`
+  - *H3:* `text-2xl font-bold leading-snug text-foreground`
+  - *H4:* `text-xl font-semibold leading-normal text-foreground`
 - **Body:** `text-base leading-relaxed text-gray-900`
 - **Links:** `text-primary hover:text-secondary transition-colors duration-200`
 

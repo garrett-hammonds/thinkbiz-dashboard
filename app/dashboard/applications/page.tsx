@@ -33,7 +33,7 @@ export default async function ApplicationsPage() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold mb-8 text-foreground">Pending Applications</h1>
+        <h1 className="mb-8 text-4xl font-black leading-tight tracking-tight text-foreground">Pending Applications</h1>
         
         {!applications || applications.length === 0 ? (
           <p className="text-muted-foreground">No pending applications</p>
@@ -42,31 +42,31 @@ export default async function ApplicationsPage() {
             {applications.map((app) => (
               <div 
                 key={app.id} 
-                className="border-4 border-black rounded-xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-card p-6 flex flex-col gap-4"
+                className="bg-white rounded-xl border border-gray-100 shadow-card transition-all duration-200 hover:shadow-card-hover hover:-translate-y-[2px] flex flex-col gap-4 p-6"
               >
                 <div>
-                  <h2 className="text-xl font-bold text-card-foreground">{app.first_name} {app.last_name}</h2>
-                  <p className="text-muted-foreground">{app.email} {app.phone ? `• ${app.phone}` : ''}</p>
+                  <h2 className="text-2xl font-bold leading-snug text-foreground">{app.first_name} {app.last_name}</h2>
+                  <p className="text-gray-500 text-sm font-medium">{app.email} {app.phone ? `• ${app.phone}` : ''}</p>
                 </div>
                 
                 <div>
-                  <p className="font-semibold text-card-foreground">Company</p>
-                  <p className="text-card-foreground">{app.company_name} - {app.title}</p>
+                  <p className="text-gray-500 text-sm font-medium">Company</p>
+                  <p className="text-gray-900 text-base">{app.company_name} - {app.title}</p>
                 </div>
                 
                 <div>
-                  <p className="font-semibold text-card-foreground">Requested Club</p>
-                  <p className="text-card-foreground">{app.clubs?.name || 'N/A'}</p>
+                  <p className="text-gray-500 text-sm font-medium">Requested Club</p>
+                  <p className="text-gray-900 text-base">{app.clubs?.name || 'N/A'}</p>
                 </div>
                 
                 {app.bio && (
                   <div>
-                    <p className="font-semibold text-card-foreground">Bio</p>
-                    <p className="text-card-foreground line-clamp-3">{app.bio}</p>
+                    <p className="text-gray-500 text-sm font-medium">Bio</p>
+                    <p className="text-gray-900 text-base line-clamp-3">{app.bio}</p>
                   </div>
                 )}
                 
-                <div className="mt-auto pt-4 border-t-2 border-black">
+                <div className="mt-auto pt-4 border-t border-gray-100">
                   <ApproveButton applicationId={app.id} />
                 </div>
               </div>

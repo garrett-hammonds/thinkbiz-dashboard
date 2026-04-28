@@ -28,7 +28,7 @@ export default function ApproveButton({ applicationId }: { applicationId: string
     <button
       onClick={handleApprove}
       disabled={isLoading}
-      className="bg-primary hover:bg-primary-dark text-primary-foreground px-4 py-2 rounded-md transition-colors disabled:opacity-50"
+      className="bg-primary text-white hover:bg-secondary rounded-lg px-6 py-3 font-semibold transition-colors duration-200 focus-visible:outline-primary disabled:opacity-50"
     >
       {isLoading ? 'Approving...' : 'Approve Application'}
     </button>

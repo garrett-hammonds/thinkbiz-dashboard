@@ -1,4 +1,5 @@
 import { login } from './actions';
+import Link from 'next/link';
 
 export default async function LoginPage({
   searchParams,
@@ -9,8 +10,8 @@ export default async function LoginPage({
 
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-sm border-4 border-black rounded-xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-white p-8">
-        <h1 className="font-bold text-2xl mb-6 text-center text-black">ThinkBiz Director Login</h1>
+      <div className="w-full max-w-sm bg-white rounded-xl border border-gray-100 shadow-card p-8 transition-all duration-200">
+        <h1 className="text-3xl font-bold leading-snug text-foreground text-center mb-6">Welcome Back</h1>
         
         <form action={login} className="flex flex-col gap-4">
           <input
@@ -18,25 +19,29 @@ export default async function LoginPage({
             name="email"
             placeholder="Email"
             required
-            className="w-full border-2 border-black rounded-lg p-3 font-medium text-black"
+            className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
           />
           <input
             type="password"
             name="password"
             placeholder="Password"
             required
-            className="w-full border-2 border-black rounded-lg p-3 font-medium text-black"
+            className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
           />
           <button
             type="submit"
-            className="bg-blue-600 text-white font-bold text-lg border-2 border-black rounded-lg p-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:translate-x-1 active:shadow-none transition-all"
+            className="w-full bg-primary text-white hover:bg-secondary rounded-lg px-6 py-3 font-semibold transition-colors duration-200 focus-visible:outline-primary"
           >
             Submit
           </button>
         </form>
 
+        <div className="mt-6 text-center text-sm text-gray-500">
+          Don&apos;t have an account? <Link href="/apply" className="text-primary hover:text-secondary font-semibold transition-colors duration-200">Apply to join</Link>
+        </div>
+
         {message && (
-          <div className="mt-4 text-red-600 font-bold text-center">
+          <div className="text-destructive mt-4 text-center text-sm font-medium">
             {message}
           </div>
         )}
