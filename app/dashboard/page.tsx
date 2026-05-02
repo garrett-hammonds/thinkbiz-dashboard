@@ -46,9 +46,9 @@ export default async function DashboardPage() {
     revenuePromise
   ]);
     
-  console.log('\n--- REVENUE DEBUG ---');
-  console.log('Raw revenueData:', revenueData);
-  console.log('Revenue query error:', revenueError);
+  // console.log('\n--- REVENUE DEBUG ---');
+  // console.log('Raw revenueData:', revenueData);
+  // console.log('Revenue query error:', revenueError);
 
   const logs = logsData || [];
   const revenue = revenueData || [];
