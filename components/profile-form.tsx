@@ -2,14 +2,51 @@
 
 import { useState, useTransition } from 'react';
 import { updateProfile, logout } from '@/app/actions/profile';
+import imageCompression from 'browser-image-compression';
+import { createClient } from '@/utils/supabase/client';
 
 export default function ProfileForm({ member }: { member: any }) {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(member?.member_headshot || '');
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const compressedFile = await imageCompression(file, { 
+        maxSizeMB: 0.2, 
+        maxWidthOrHeight: 800, 
+        useWebWorker: true, 
+        fileType: 'image/webp' 
+      });
+
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase.storage.from('Member Images').upload(`${user.id}/headshot.webp`, compressedFile, { upsert: true });
+      
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage.from('Member Images').getPublicUrl(`${user.id}/headshot.webp`);
+      
+      setPreviewUrl(publicUrl);
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Failed to upload image.' });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    formData.set('member_headshot', previewUrl);
     
     startTransition(async () => {
       try {
@@ -61,14 +98,17 @@ export default function ProfileForm({ member }: { member: any }) {
           </div>
 
           <div>
-            <label htmlFor="member_headshot" className="block text-sm font-medium text-gray-900 mb-2">Headshot URL</label>
-            <input
-              type="url"
-              id="member_headshot"
-              name="member_headshot"
-              defaultValue={member?.member_headshot || ''}
-              className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 focus:ring-2 focus:ring-primary focus:outline-none"
+            <label className="block text-sm font-medium text-gray-900 mb-2">Headshot</label>
+            {previewUrl && (
+              <img src={previewUrl} alt="Headshot preview" className="w-24 h-24 rounded-full object-cover mb-4" />
+            )}
+            <input 
+              type="file" 
+              accept="image/*" 
+              onChange={handleImageUpload} 
+              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-secondary cursor-pointer"
             />
+            {uploadingImage && <p className="text-sm text-gray-500 mt-2">Uploading image...</p>}
           </div>
 
           <div>
@@ -129,7 +169,7 @@ export default function ProfileForm({ member }: { member: any }) {
           <div>
             <button
               type="submit"
-              disabled={isPending}
+              disabled={isPending || uploadingImage}
               className="rounded-lg font-semibold bg-primary text-white hover:bg-secondary focus-visible:outline-primary px-6 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isPending ? 'Saving...' : 'Save Profile'}
