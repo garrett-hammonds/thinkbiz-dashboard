@@ -27,7 +27,17 @@ export async function updateProfile(formData: FormData) {
   const member_headshot = formData.get('member_headshot') as string;
 
   const skillsStr = formData.get('core_skills') as string;
-  const core_skills = skillsStr ? skillsStr.split(',').map(s => s.trim()) : [];
+  const core_skills = skillsStr ? skillsStr.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+  // Makes sure all URLs are good 'n proper
+  const isValidUrl = (url: string) => {
+    if (!url) return true; // allow empty strings if the field is optional
+    try { new URL(url); return true; } catch { return false; }
+  };
+
+  if (!isValidUrl(website_url) || !isValidUrl(linkedin_url) || !isValidUrl(booking_calendar_url)) {
+    return { success: false, message: 'Please provide valid URLs including http:// or https://' };
+  }
 
   const { error } = await supabase
     .from('members')

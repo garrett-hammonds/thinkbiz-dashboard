@@ -35,7 +35,7 @@ export default function ProfileForm({ member }: { member: any }) {
 
       const { data: { publicUrl } } = supabase.storage.from('Member Images').getPublicUrl(`${user.id}/headshot.webp`);
       
-      setPreviewUrl(publicUrl);
+      setPreviewUrl(`${publicUrl}?t=${Date.now()}`);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Failed to upload image.' });
     } finally {
