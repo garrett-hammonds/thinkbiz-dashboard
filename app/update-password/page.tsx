@@ -20,6 +20,13 @@ export default async function UpdatePasswordPage({
             required
             className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
           />
+          <input
+            type="password"
+            name="confirmPassword"
+            placeholder="Confirm Password"
+            required
+            className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
+          />
           <button
             type="submit"
             className="w-full bg-primary text-white hover:bg-secondary focus-visible:outline-primary px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
