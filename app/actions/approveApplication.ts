@@ -53,7 +53,8 @@ export async function approveApplication(applicationId: string) {
     }
 
     const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-      application.email
+      application.email,
+      { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/update-password` }
     );
 
     if (inviteError || !inviteData.user) {
