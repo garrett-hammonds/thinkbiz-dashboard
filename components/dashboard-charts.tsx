@@ -20,6 +20,7 @@ interface WeeklyLog {
 
 interface DashboardChartsProps {
   data: WeeklyLog[];
+  revenueData?: any[];
 }
 
 const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -53,8 +54,9 @@ function MetricChart({ title, dataKey, color, chartData, formatAsCurrency }: Met
               tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }}
               axisLine={false}
               tickLine={false}
-              tickFormatter={formatAsCurrency ? (v) => `$${v/1000}k` : undefined}
+              tickFormatter={formatAsCurrency ? (v) => new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short', style: 'currency', currency: 'USD', maximumFractionDigits: 1 }).format(v) : undefined}
               width={formatAsCurrency ? 50 : 30}
+              allowDecimals={false}
             />
             <Tooltip
               contentStyle={{
@@ -71,6 +73,7 @@ function MetricChart({ title, dataKey, color, chartData, formatAsCurrency }: Met
               dataKey={dataKey}
               fill={color}
               radius={[4, 4, 0, 0]}
+              maxBarSize={40}
             />
           </BarChart>
         </ResponsiveContainer>
@@ -79,22 +82,30 @@ function MetricChart({ title, dataKey, color, chartData, formatAsCurrency }: Met
   );
 }
 
-export function DashboardCharts({ data }: DashboardChartsProps) {
-  const monthlyTotals = data.reduce((acc, log) => {
-    const month = new Date(log.created_at).toLocaleString('default', { month: 'short' });
-    if (!acc[month]) {
-      acc[month] = { date: month, revenue: 0, visitors: 0, oneOnOnes: 0, thanked: 0 };
-    }
-    acc[month].revenue += log.revenue || 0;
-    acc[month].visitors += log.visitors_brought || 0;
-    acc[month].oneOnOnes += log.one_on_ones_had || 0;
-    acc[month].thanked += log.referrals_given || 0;
-    return acc;
-  }, {} as Record<string, { date: string; revenue: number; visitors: number; oneOnOnes: number; thanked: number; }>);
+export function DashboardCharts({ data, revenueData = [] }: DashboardChartsProps) {
+  const monthlyTotals: Record<string, { date: string; revenue: number; visitors: number; oneOnOnes: number; thanked: number; }> = {};
+  
+  monthOrder.forEach((month) => {
+    monthlyTotals[month] = { date: month, revenue: 0, visitors: 0, oneOnOnes: 0, thanked: 0 };
+  });
 
-  const chartData = monthOrder
-    .map(month => monthlyTotals[month])
-    .filter(Boolean);
+  data.forEach((log) => {
+    const month = new Date(log.created_at).toLocaleString('default', { month: 'short' });
+    if (monthlyTotals[month]) {
+      monthlyTotals[month].visitors += log.visitors_brought || 0;
+      monthlyTotals[month].oneOnOnes += log.one_on_ones_had || 0;
+    }
+  });
+
+  revenueData.forEach((rev) => {
+    const month = new Date(rev.created_at).toLocaleString('default', { month: 'short' });
+    if (monthlyTotals[month]) {
+      monthlyTotals[month].revenue += rev.revenue_amount || 0;
+      monthlyTotals[month].thanked += 1;
+    }
+  });
+
+  const chartData = monthOrder.map(month => monthlyTotals[month]);
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

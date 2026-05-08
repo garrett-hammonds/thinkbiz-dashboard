@@ -50,6 +50,7 @@ export function Scorecards({ logsData, revenueData }: ScorecardsProps) {
   const totalVisitors = logsData.reduce((acc, log) => acc + (log.visitors_brought || 0), 0);
   const totalOneOnOnes = logsData.reduce((acc, log) => acc + (log.one_on_ones_had || 0), 0);
   const totalReferrals = logsData.reduce((acc, log) => acc + (log.referrals_given || 0), 0);
+  const membersThankedCount = revenueData.length;
 
   const formattedRevenue = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -80,7 +81,7 @@ export function Scorecards({ logsData, revenueData }: ScorecardsProps) {
       />
       <Scorecard
         title="Members Thanked"
-        value={totalReferrals.toString()}
+        value={membersThankedCount.toString()}
         subtitle="for closed business"
         icon={<Heart className="h-5 w-5" />}
         accentColor="#FF9800"
