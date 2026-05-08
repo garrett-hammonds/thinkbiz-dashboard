@@ -54,7 +54,7 @@ function MetricChart({ title, dataKey, color, chartData, formatAsCurrency }: Met
               tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }}
               axisLine={false}
               tickLine={false}
-              tickFormatter={formatAsCurrency ? (v) => `$${v/1000}k` : undefined}
+              tickFormatter={formatAsCurrency ? (v) => new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short', style: 'currency', currency: 'USD', maximumFractionDigits: 1 }).format(v) : undefined}
               width={formatAsCurrency ? 50 : 30}
             />
             <Tooltip
