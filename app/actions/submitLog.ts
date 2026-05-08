@@ -41,7 +41,12 @@ export async function submitLogAction(formData: FormData) {
     .single();
 
   if (logError || !log) {
-    throw new Error('Failed to insert log');
+   // table has constraint prevent multiple logs per week
+    if (logError.code === '23505') {
+      redirect('/log?message=You have already submitted a log for this week!');
+    }
+    // Generic fallback
+    redirect('/log?message=Failed to insert log. Please try again.');
   }
 
   const thanksJson = formData.get('revenue_thanks') as string;
