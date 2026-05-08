@@ -15,7 +15,7 @@ export async function submitLogAction(formData: FormData) {
   const { data: memberData, error: memberError } = await supabase
     .from('members')
     .select('id, current_club_id')
-    .eq('user_id', user.id)
+    .eq('auth_user_id', user.id)
     .single();
 
   if (memberError || !memberData) {
@@ -55,7 +55,7 @@ export async function submitLogAction(formData: FormData) {
         const mappedThanks = validThanks.map(entry => ({
           weekly_log_id: log.id,
           thanking_member_id: memberData.id,
-          thanked_member_id: entry.memberId === 'external' ? null : entry.memberId,
+          thanked_member_id: (entry.memberId === 'external' || entry.memberId === '') ? null : entry.memberId,
           revenue_amount: parseFloat(entry.amount)
         }));
         
