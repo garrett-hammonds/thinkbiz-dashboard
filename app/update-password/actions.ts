@@ -13,9 +13,14 @@ export async function updateUserPassword(formData: FormData) {
   if (password !== confirmPassword){
     redirect('/update-password?message=Passwords do not match');
   }
-  
-  const supabase = await createClient();
 
+  const supabase = await createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (!session) {
+    redirect('/login?message=Session expired. Please request a new invite link.');
+  }
+  
   const { error } = await supabase.auth.updateUser({ password });
 
   if (error) {
