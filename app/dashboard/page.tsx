@@ -31,11 +31,6 @@ export default async function DashboardPage() {
     .select('*')
     .eq('member_id', member.id);
 
-  //const revenuePromise = supabase
-  //  .from('closed_business_thanks')
-  //  .select('revenue_amount')
-  //  .eq('thanked_member_id', member.id);
-
   const revenuePromise = supabase
     .from('closed_business_thanks')
     .select('revenue_amount')
@@ -45,13 +40,9 @@ export default async function DashboardPage() {
     logsPromise,
     revenuePromise
   ]);
-    
-  // console.log('\n--- REVENUE DEBUG ---');
-  // console.log('Raw revenueData:', revenueData);
-  // console.log('Revenue query error:', revenueError);
 
   const logs = logsData || [];
-  const revenue = revenueData || [];
+  const revenue = (revenueData as any[]) || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -71,7 +62,7 @@ export default async function DashboardPage() {
         </section>
 
         <section aria-label="Monthly trends" className="mb-8">
-          <DashboardCharts data={logs} />
+          <DashboardCharts data={logs} revenueData={revenue} />
         </section>
       </main>
     </div>
