@@ -90,7 +90,7 @@ export function DashboardCharts({ data, revenueData = [] }: DashboardChartsProps
   });
 
   data.forEach((log) => {
-    const month = new Date(log.created_at).toLocaleString('default', { month: 'short' });
+    const month = new Date(log.created_at).toLocaleString('en-US', { month: 'short' });
     if (monthlyTotals[month]) {
       monthlyTotals[month].visitors += log.visitors_brought || 0;
       monthlyTotals[month].oneOnOnes += log.one_on_ones_had || 0;
@@ -98,7 +98,7 @@ export function DashboardCharts({ data, revenueData = [] }: DashboardChartsProps
   });
 
   revenueData.forEach((rev) => {
-    const month = new Date(rev.created_at).toLocaleString('default', { month: 'short' });
+    const month = new Date(rev.created_at).toLocaleString('en-US', { month: 'short' });
     if (monthlyTotals[month]) {
       monthlyTotals[month].revenue += rev.revenue_amount || 0;
       monthlyTotals[month].thanked += 1;

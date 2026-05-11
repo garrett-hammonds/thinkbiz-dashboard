@@ -7,7 +7,6 @@ import { DashboardCharts } from "@/components/dashboard-charts";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
@@ -36,13 +35,47 @@ export default async function DashboardPage() {
     .select('revenue_amount, created_at')
     .eq('thanking_member_id', member.id);
   
-  const [{ data: logsData }, { data: revenueData, error: revenueError }] = await Promise.all([
+  const [{ data: logsData }, { data: revenueData }] = await Promise.all([
     logsPromise,
     revenuePromise
   ]);
 
   const logs = logsData || [];
   const revenue = (revenueData as any[]) || [];
+
+  let clubName = '';
+  let clubLogs: any[] = [];
+  let clubRevenue: any[] = [];
+
+  if (member?.current_club_id) {
+    const { data: clubData } = await supabase
+      .from('clubs')
+      .select('start_time, display_name')
+      .eq('id', member.current_club_id)
+      .single();
+    
+    if (clubData) {
+      clubName = `${clubData.start_time} ${clubData.display_name}`;
+    }
+
+    const clubLogsPromise = supabase
+    .from('weekly_logs')
+    .select('*')
+    .eq('club_id', member.current_club_id);
+
+    const clubRevenuePromise = supabase
+      .from('closed_business_thanks')
+      .select('revenue_amount, created_at, weekly_logs!inner(club_id)')
+      .eq('weekly_logs.club_id', member.current_club_id);
+
+    const [{ data: cLogs }, { data: cRevenue }] = await Promise.all([
+      clubLogsPromise,
+      clubRevenuePromise
+    ]);
+
+    if (cLogs) clubLogs = cLogs;
+    if (cRevenue) clubRevenue = cRevenue;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -64,6 +97,20 @@ export default async function DashboardPage() {
         <section aria-label="Monthly trends" className="mb-8">
           <DashboardCharts data={logs} revenueData={revenue} />
         </section>
+
+        {member?.current_club_id && (
+          <div className="mt-16 border-t border-gray-200 pt-12">
+            <h2 className="text-3xl font-bold leading-snug text-foreground mb-8">
+              Club stats for {clubName}
+            </h2>
+            
+            <Scorecards logsData={clubLogs} revenueData={clubRevenue} />
+            
+            <div className="mt-8">
+              <DashboardCharts data={clubLogs} revenueData={clubRevenue} />
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
