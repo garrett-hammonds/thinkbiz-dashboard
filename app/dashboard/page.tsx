@@ -7,7 +7,6 @@ import { DashboardCharts } from "@/components/dashboard-charts";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
@@ -42,17 +41,13 @@ export default async function DashboardPage() {
   ]);
 
   const logs = logsData || [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const revenue = (revenueData as any[]) || [];
 
   let clubName = '';
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let clubLogs: any[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let clubRevenue: any[] = [];
 
   if (member?.current_club_id) {
-    // 1. Fetch Club Details
     const { data: clubData } = await supabase
       .from('clubs')
       .select('start_time, display_name')
@@ -63,20 +58,22 @@ export default async function DashboardPage() {
       clubName = `${clubData.start_time} ${clubData.display_name}`;
     }
 
-    // 2. Fetch Club Logs
-    const { data: cLogs } = await supabase
-      .from('weekly_logs')
-      .select('*')
-      .eq('club_id', member.current_club_id);
-    
-    if (cLogs) clubLogs = cLogs;
+    const clubLogsPromise = supabase
+    .from('weekly_logs')
+    .select('*')
+    .eq('club_id', member.current_club_id);
 
-    // 3. Fetch Club Revenue (Using an inner join through weekly_logs)
-    const { data: cRevenue } = await supabase
+    const clubRevenuePromise = supabase
       .from('closed_business_thanks')
       .select('revenue_amount, created_at, weekly_logs!inner(club_id)')
       .eq('weekly_logs.club_id', member.current_club_id);
-    
+
+    const [{ data: cLogs }, { data: cRevenue }] = await Promise.all([
+      clubLogsPromise,
+      clubRevenuePromise
+    ]);
+
+    if (cLogs) clubLogs = cLogs;
     if (cRevenue) clubRevenue = cRevenue;
   }
 
