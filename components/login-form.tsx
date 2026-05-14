@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { login } from '@/app/login/actions';
+import Link from 'next/link';
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -39,6 +40,11 @@ export function LoginForm() {
       >
         Submit
       </button>
+      <div className="text-center mt-2">
+        <Link href="/forgot-password" className="text-sm text-primary hover:text-secondary font-medium transition-colors duration-200">
+          Forgot password?
+        </Link>
+      </div>
     </form>
   );
 }
