@@ -5,13 +5,17 @@ import { redirect } from 'next/navigation';
 
 export async function resetPassword(formData: FormData) {
   const email = formData.get('email') as string;
-  const supabase = await createClient();
+  if (!email) {
+    redirect('/forgot-password?error=Email is required');
+  }
 
+  const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/update-password`,
   });
 
   if (error) {
+    console.error('Password reset error:', error.message);
     redirect('/forgot-password?message=Could not send reset email. Please try again.');
   }
 

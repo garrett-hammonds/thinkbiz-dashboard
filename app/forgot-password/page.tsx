@@ -5,9 +5,9 @@ import { resetPassword } from './actions';
 export default async function ForgotPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ message?: string }>;
+  searchParams: Promise<{ error?: string; success?: string }>;
 }) {
-  const { message } = await searchParams;
+  const { error, success } = await searchParams;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -39,10 +39,16 @@ export default async function ForgotPasswordPage({
           <Link href="/login" className="text-sm text-gray-500 hover:text-primary transition-colors block text-center mt-6">
             Back to login
           </Link>
+          
+          {error && (
+            <div className="mt-4 text-center text-sm font-medium text-destructive">
+              {error}
+            </div>
+          )}
 
-          {message && (
-            <div className={`mt-4 text-center text-sm font-medium ${message.includes('Check') ? 'text-emerald-600' : 'text-destructive'}`}>
-              {message}
+          {success && (
+            <div className="mt-4 text-center text-sm font-medium text-emerald-600">
+              {success}
             </div>
           )}
         </div>
