@@ -16,8 +16,8 @@ export async function resetPassword(formData: FormData) {
 
   if (error) {
     console.error('Password reset error:', error.message);
-    redirect('/forgot-password?message=Could not send reset email. Please try again.');
+    redirect('/forgot-password?error=Could not send reset email. Please try again.');
   }
 
-  redirect('/forgot-password?message=Check your email for the password reset link.');
+  redirect('/forgot-password?success=Check your email for the password reset link.');
 }
