@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
 import { Navbar } from '@/components/navbar';
 import ProfileForm from '@/components/profile-form';
+import { getMemberForUser } from '@/utils/supabase/getMember';
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -11,11 +12,7 @@ export default async function ProfilePage() {
     redirect('/login');
   }
 
-  const { data: member } = await supabase
-    .from('members')
-    .select('*')
-    .eq('auth_user_id', user.id)
-    .maybeSingle();
+  const member = await getMemberForUser(supabase, user);
 
   if (!member) {
     redirect('/access-denied');
