@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
 import { Navbar } from '@/components/navbar';
 import ApproveButton from './ApproveButton';
+import { getMemberForUser } from '@/utils/supabase/getMember';
 
 export default async function ApplicationsPage() {
   const supabase = await createClient();
@@ -11,11 +12,7 @@ export default async function ApplicationsPage() {
     redirect('/login');
   }
 
-  const { data: memberData } = await supabase
-    .from('members')
-    .select('*')
-    .eq('auth_user_id', user.id)
-    .single();
+  const memberData = await getMemberForUser(supabase, user);
 
   if (!memberData || (!memberData.is_admin && !memberData.club_director)) {
     redirect('/access-denied');

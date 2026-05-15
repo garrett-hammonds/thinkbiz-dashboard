@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
+import { getMemberForUser } from '@/utils/supabase/getMember';
 
 import { Navbar } from "@/components/navbar";
 import { Scorecards } from "@/components/scorecards";
@@ -13,11 +14,7 @@ export default async function DashboardPage() {
     redirect('/login');
   }
 
-  const { data: memberData } = await supabase
-    .from('members')
-    .select('*')
-    .eq('auth_user_id', user.id)
-    .maybeSingle();
+  const memberData = await getMemberForUser(supabase, user);
 
   if (!memberData) {
     redirect('/access-denied');

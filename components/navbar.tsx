@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { User, LifeBuoy } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
+import { getMemberForUser } from "@/utils/supabase/getMember";
 import { MobileMenu } from "./mobile-menu";
 
 export async function Navbar() {
@@ -11,13 +12,8 @@ export async function Navbar() {
   let canViewApps = false;
 
   if (user) {
-    const { data: member } = await supabase
-      .from('members')
-      .select('is_admin, club_director')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-
-    canViewApps = member?.is_admin || member?.club_director;
+    const member = await getMemberForUser(supabase, user);
+    canViewApps = !!(member?.is_admin || member?.club_director);
   }
 
   return (
