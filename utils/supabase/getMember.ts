@@ -7,8 +7,9 @@ import { createClient as createAdminClient } from '@supabase/supabase-js';
 // even though their `email` matches a real Supabase auth user. On first
 // login for such users the direct `auth_user_id` lookup misses and they
 // get bounced to /access-denied. To self-heal that case, when the id
-// lookup fails we fall back to matching by email and, if the row is
-// unlinked, write the current auth user's id back to it.
+// lookup fails we look up the row by email via the service-role client
+// (RLS would otherwise hide an unlinked row from its own owner) and, if
+// it's unlinked, write the current auth user's id onto it.
 //
 // We only auto-link when `auth_user_id IS NULL` so we never overwrite a
 // member already bound to a different auth user.
@@ -23,27 +24,58 @@ export async function getMemberForUser(supabase: SupabaseClient, user: User) {
 
   if (!user.email) return null;
 
-  const { data: byEmail } = await supabase
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    console.error(
+      '[getMemberForUser] SUPABASE_SERVICE_ROLE_KEY not set; cannot auto-link member by email.',
+    );
+    return null;
+  }
+
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceRoleKey,
+  );
+
+  const { data: byEmail, error: byEmailError } = await admin
     .from('members')
     .select('*')
     .ilike('email', user.email)
     .maybeSingle();
 
-  if (!byEmail) return null;
-  if (byEmail.auth_user_id) return null;
+  if (byEmailError) {
+    console.error('[getMemberForUser] email lookup failed:', byEmailError);
+    return null;
+  }
 
-  const admin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  if (!byEmail) {
+    console.warn(
+      `[getMemberForUser] no members row for email=${user.email} (auth_user_id=${user.id}). User needs an approved application.`,
+    );
+    return null;
+  }
 
-  const { data: linked } = await admin
+  if (byEmail.auth_user_id && byEmail.auth_user_id !== user.id) {
+    console.warn(
+      `[getMemberForUser] members row for ${user.email} is bound to a different auth_user_id; refusing to relink.`,
+    );
+    return null;
+  }
+
+  if (byEmail.auth_user_id === user.id) return byEmail;
+
+  const { data: linked, error: linkError } = await admin
     .from('members')
     .update({ auth_user_id: user.id })
     .eq('id', byEmail.id)
     .is('auth_user_id', null)
     .select('*')
     .maybeSingle();
+
+  if (linkError) {
+    console.error('[getMemberForUser] auto-link update failed:', linkError);
+    return null;
+  }
 
   return linked ?? { ...byEmail, auth_user_id: user.id };
 }
