@@ -10,10 +10,12 @@ export async function Navbar() {
   const { data: { user } } = await supabase.auth.getUser();
 
   let canViewApps = false;
+  let isAdmin = false;
 
   if (user) {
     const member = await getMemberForUser(supabase, user);
     canViewApps = !!(member?.is_admin || member?.club_director);
+    isAdmin = !!member?.is_admin;
   }
 
   return (
@@ -49,6 +51,15 @@ export async function Navbar() {
             </Link>
           )}
 
+          {isAdmin && (
+            <Link
+              href="/dashboard/invite-director"
+              className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:inline-flex"
+            >
+              Invite Director
+            </Link>
+          )}
+
           {user && (
             <Link
               href="/log"
@@ -77,7 +88,7 @@ export async function Navbar() {
           )}
         </div>
 
-        <MobileMenu canViewApps={canViewApps} isLoggedIn={!!user} />
+        <MobileMenu canViewApps={canViewApps} isAdmin={isAdmin} isLoggedIn={!!user} />
       </nav>
     </header>
   );

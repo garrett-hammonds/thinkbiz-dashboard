@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { User, LifeBuoy, Menu, X } from "lucide-react";
 
-export function MobileMenu({ canViewApps, isLoggedIn }: { canViewApps: boolean; isLoggedIn: boolean }) {
+export function MobileMenu({ canViewApps, isAdmin, isLoggedIn }: { canViewApps: boolean; isAdmin: boolean; isLoggedIn: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -35,6 +35,16 @@ export function MobileMenu({ canViewApps, isLoggedIn }: { canViewApps: boolean; 
               onClick={() => setIsOpen(false)}
             >
               Applications
+            </Link>
+          )}
+
+          {isAdmin && (
+            <Link
+              href="/dashboard/invite-director"
+              className="flex w-full justify-start items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => setIsOpen(false)}
+            >
+              Invite Director
             </Link>
           )}
 
