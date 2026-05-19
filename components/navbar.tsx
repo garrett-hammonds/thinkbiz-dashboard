@@ -65,7 +65,7 @@ export async function Navbar() {
               href="/log"
               className="hidden rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:inline-flex"
             >
-              Submit Report
+              Success Tracking
             </Link>
           )}
 
