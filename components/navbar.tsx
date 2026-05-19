@@ -23,7 +23,7 @@ export async function Navbar() {
       <nav className="mx-auto flex h-24 md:h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
           href={user ? "/dashboard" : "/login"}
-          className="flex flex-col md:flex-row md:items-center gap-1.5 md:gap-3 text-foreground transition-opacity hover:opacity-80"
+          className="flex flex-col md:flex-row md:items-center gap-2.5 md:gap-3 text-foreground transition-opacity hover:opacity-80"
         >
           <Image
             src="/thinkbiz-horizontal-logo.svg"
@@ -31,7 +31,7 @@ export async function Navbar() {
             width={160}
             height={44}
             priority
-            className="h-10 w-auto"
+            className="h-8 w-auto"
           />
           {(isAdmin || canViewApps) && (
             <span className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-md text-xs font-bold text-foreground w-fit">
