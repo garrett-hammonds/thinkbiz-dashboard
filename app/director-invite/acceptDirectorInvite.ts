@@ -5,13 +5,6 @@ import { verifyDirectorInviteToken } from '@/utils/inviteTokens';
 
 export interface AcceptDirectorInviteInput {
   token: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  companyName: string;
-  title: string;
-  bio: string;
-  coreSkills: string;
 }
 
 export interface AcceptDirectorInviteResult {
@@ -22,20 +15,8 @@ export interface AcceptDirectorInviteResult {
 export async function acceptDirectorInvite(
   input: AcceptDirectorInviteInput,
 ): Promise<AcceptDirectorInviteResult> {
-  const required: Array<[string, string | undefined]> = [
-    ['token', input.token],
-    ['First name', input.firstName],
-    ['Last name', input.lastName],
-    ['Phone', input.phone],
-    ['Company name', input.companyName],
-    ['Title', input.title],
-    ['Bio', input.bio],
-    ['Core skills', input.coreSkills],
-  ];
-  for (const [label, value] of required) {
-    if (!value || !value.trim()) {
-      return { success: false, message: `${label} is required.` };
-    }
+  if (!input.token) {
+    return { success: false, message: 'Missing invite token.' };
   }
 
   let claims;
@@ -62,13 +43,14 @@ export async function acceptDirectorInvite(
 
   const { data: existingMember } = await admin
     .from('members')
-    .select('id')
+    .select('id, auth_user_id')
     .ilike('email', claims.email)
     .maybeSingle();
-  if (existingMember) {
+
+  if (existingMember?.auth_user_id) {
     return {
       success: false,
-      message: 'An account already exists for this email. Use the login page.',
+      message: 'An account already exists for this email. Use the login page or contact ThinkBiz Support.',
     };
   }
 
@@ -84,26 +66,32 @@ export async function acceptDirectorInvite(
     return { success: false, message: 'Failed to send invite email. Try again.' };
   }
 
-  const { error: insertError } = await admin.from('members').insert({
-    auth_user_id: inviteData.user.id,
-    current_club_id: claims.clubId,
-    first_name: input.firstName.trim(),
-    last_name: input.lastName.trim(),
-    email: claims.email,
-    phone: input.phone.trim(),
-    company_name: input.companyName.trim(),
-    title: input.title.trim(),
-    bio: input.bio.trim(),
-    core_skills: input.coreSkills
-      .split(',')
-      .map((skill) => skill.trim())
-      .filter(Boolean),
-    club_director: true,
-  });
+  if (existingMember) {
+    const { error: updateError } = await admin
+      .from('members')
+      .update({
+        auth_user_id: inviteData.user.id,
+        current_club_id: claims.clubId,
+        club_director: true,
+      })
+      .eq('id', existingMember.id);
 
-  if (insertError) {
-    console.error('[acceptDirectorInvite] member insert failed:', insertError);
-    return { success: false, message: 'Failed to create director profile.' };
+    if (updateError) {
+      console.error('[acceptDirectorInvite] member update failed:', updateError);
+      return { success: false, message: 'Failed to link existing member to invite.' };
+    }
+  } else {
+    const { error: insertError } = await admin.from('members').insert({
+      auth_user_id: inviteData.user.id,
+      current_club_id: claims.clubId,
+      email: claims.email,
+      club_director: true,
+    });
+
+    if (insertError) {
+      console.error('[acceptDirectorInvite] member insert failed:', insertError);
+      return { success: false, message: 'Failed to create director profile.' };
+    }
   }
 
   return { success: true };

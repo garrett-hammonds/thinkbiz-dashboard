@@ -20,6 +20,10 @@ export default async function DashboardPage() {
     redirect('/access-denied');
   }
 
+  if (!memberData.profile_completed_at) {
+    redirect('/onboarding');
+  }
+
   const member = memberData;
 
   const logsPromise = supabase
