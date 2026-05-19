@@ -18,7 +18,7 @@ export function MobileMenu({ canViewApps, isAdmin, isLoggedIn }: { canViewApps: 
       </button>
 
       {isOpen && (
-        <div className="md:hidden border-t p-6 flex flex-col gap-4 absolute top-20 md:top-14 left-0 w-full bg-card shadow-lg z-50">
+        <div className="md:hidden border-t p-6 flex flex-col gap-4 absolute top-24 md:top-14 left-0 w-full bg-card shadow-lg z-50">
           {isAdmin && (
             <Link
               href="/dashboard/invite-director"

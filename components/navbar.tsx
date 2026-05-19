@@ -20,33 +20,25 @@ export async function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card">
-      <nav className="mx-auto flex h-20 md:h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <nav className="mx-auto flex h-24 md:h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
           href={user ? "/dashboard" : "/login"}
-          className="flex items-center gap-2 text-foreground transition-opacity hover:opacity-80"
+          className="flex flex-col md:flex-row md:items-center gap-1.5 md:gap-3 text-foreground transition-opacity hover:opacity-80"
         >
           <Image
-            src="/ThinkbizEmblem.png"
-            alt="ThinkBiz Icon"
-            width={32}
-            height={32}
+            src="/thinkbiz-horizontal-logo.svg"
+            alt="ThinkBiz Solutions Logo"
+            width={160}
+            height={44}
             priority
+            className="h-10 w-auto"
           />
-          <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
-            <Image
-              src="/thinkbiz-logo-horizontal.png"
-              alt="ThinkBiz Solutions Logo"
-              width={150}
-              height={40}
-              priority
-            />
-            {(isAdmin || canViewApps) && (
-              <span className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-md text-xs font-bold text-foreground w-fit">
-                <Shield className="h-3 w-3" />
-                {isAdmin ? 'Admin' : 'Director'}
-              </span>
-            )}
-          </div>
+          {(isAdmin || canViewApps) && (
+            <span className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-md text-xs font-bold text-foreground w-fit">
+              <Shield className="h-3 w-3" />
+              {isAdmin ? 'Admin' : 'Director'}
+            </span>
+          )}
         </Link>
 
         <div className="hidden md:flex items-center gap-1 sm:gap-2">
