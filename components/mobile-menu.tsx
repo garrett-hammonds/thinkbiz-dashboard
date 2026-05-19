@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { User, LifeBuoy, Menu, X, UserPlus, Shield, ClipboardList } from "lucide-react";
 
 export function MobileMenu({ canViewApps, isAdmin, isLoggedIn }: { canViewApps: boolean; isAdmin: boolean; isLoggedIn: boolean }) {
@@ -17,7 +18,7 @@ export function MobileMenu({ canViewApps, isAdmin, isLoggedIn }: { canViewApps: 
       </button>
 
       {isOpen && (
-        <div className="md:hidden border-t p-4 flex flex-col gap-4 absolute top-14 left-0 w-full bg-card shadow-lg z-50">
+        <div className="md:hidden border-t p-6 flex flex-col gap-4 absolute top-14 left-0 w-full bg-card shadow-lg z-50">
           {isAdmin && (
             <Link
               href="/dashboard/invite-director"

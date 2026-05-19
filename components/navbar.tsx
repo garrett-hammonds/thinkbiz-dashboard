@@ -32,19 +32,21 @@ export async function Navbar() {
             height={32}
             priority
           />
-          <Image
-            src="/thinkbiz-logo-horizontal.png"
-            alt="ThinkBiz Solutions Logo"
-            width={150}
-            height={40}
-            priority
-          />
-          {(isAdmin || canViewApps) && (
-            <span className="flex items-center gap-1.5 ml-3 px-2 py-1 bg-muted rounded-md text-xs font-bold text-foreground">
-              <Shield className="h-3 w-3" />
-              {isAdmin ? 'Admin' : 'Director'}
-            </span>
-          )}
+          <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
+            <Image
+              src="/thinkbiz-logo-horizontal.png"
+              alt="ThinkBiz Solutions Logo"
+              width={150}
+              height={40}
+              priority
+            />
+            {(isAdmin || canViewApps) && (
+              <span className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-md text-xs font-bold text-foreground w-fit">
+                <Shield className="h-3 w-3" />
+                {isAdmin ? 'Admin' : 'Director'}
+              </span>
+            )}
+          </div>
         </Link>
 
         <div className="hidden md:flex items-center gap-1 sm:gap-2">
