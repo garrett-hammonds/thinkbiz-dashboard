@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
 import { Navbar } from '@/components/navbar';
 import ApproveButton from './ApproveButton';
+import { DenyButton } from './DenyButton';
 import { getMemberForUser } from '@/utils/supabase/getMember';
 
 export default async function ApplicationsPage() {
@@ -63,8 +64,9 @@ export default async function ApplicationsPage() {
                   </div>
                 )}
                 
-                <div className="mt-auto pt-4 border-t border-gray-100">
+                <div className="mt-auto pt-4 border-t border-gray-100 flex gap-3">
                   <ApproveButton applicationId={app.id} />
+                  <DenyButton applicationId={app.id} />
                 </div>
               </div>
             ))}
