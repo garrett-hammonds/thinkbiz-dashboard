@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { User, LifeBuoy, Menu, X } from "lucide-react";
+import { User, LifeBuoy, Menu, X, UserPlus, Shield, ClipboardList } from "lucide-react";
 
 export function MobileMenu({ canViewApps, isAdmin, isLoggedIn }: { canViewApps: boolean; isAdmin: boolean; isLoggedIn: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
