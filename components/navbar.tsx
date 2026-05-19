@@ -39,6 +39,12 @@ export async function Navbar() {
             height={40}
             priority
           />
+          {(isAdmin || canViewApps) && (
+            <span className="flex items-center gap-1.5 ml-3 px-2 py-1 bg-muted rounded-md text-xs font-bold text-foreground">
+              <Shield className="h-3 w-3" />
+              {isAdmin ? 'Admin' : 'Director'}
+            </span>
+          )}
         </Link>
 
         <div className="hidden md:flex items-center gap-1 sm:gap-2">
