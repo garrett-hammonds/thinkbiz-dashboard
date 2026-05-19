@@ -18,6 +18,10 @@ export default async function ProfilePage() {
     redirect('/access-denied');
   }
 
+  if (!member.profile_completed_at) {
+    redirect('/onboarding');
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />

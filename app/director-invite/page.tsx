@@ -39,11 +39,11 @@ export default async function DirectorInvitePage({
 
   const { data: existingMember } = await admin
     .from('members')
-    .select('id')
+    .select('id, auth_user_id')
     .ilike('email', claims.email)
     .maybeSingle();
 
-  if (existingMember) {
+  if (existingMember?.auth_user_id) {
     return (
       <InviteError message="An account already exists for this email. Use the login page or contact ThinkBiz Support." />
     );
@@ -57,8 +57,7 @@ export default async function DirectorInvitePage({
           You&apos;ve been invited as a Director
         </h1>
         <p className="text-gray-500 mb-8">
-          You&apos;re being set up as Club Director for <strong>{club.name}</strong>. Complete
-          your profile below to activate your account.
+          You&apos;re being set up as Club Director for <strong>{club.name}</strong>.
         </p>
         <DirectorInviteForm token={token} email={claims.email} clubName={club.name} />
       </main>

@@ -18,6 +18,10 @@ export default async function ApplicationsPage() {
     redirect('/access-denied');
   }
 
+  if (!memberData.profile_completed_at) {
+    redirect('/onboarding');
+  }
+
   let query = supabase.from('pending_applications').select('*, clubs(name)').eq('status', 'pending');
 
   if (!memberData.is_admin) {

@@ -12,6 +12,8 @@ export default async function InviteDirectorPage() {
   const member = await getMemberForUser(supabase, user);
   if (!member?.is_admin) redirect('/access-denied');
 
+  if (!member.profile_completed_at) redirect('/onboarding');
+
   const { data: clubs } = await supabase
     .from('clubs')
     .select('id, name')
