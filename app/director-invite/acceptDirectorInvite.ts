@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { createClient as createAdminClient, type SupabaseClient } from '@supabase/supabase-js';
 import { verifyDirectorInviteToken } from '@/utils/inviteTokens';
 
 export interface AcceptDirectorInviteInput {
@@ -10,6 +10,35 @@ export interface AcceptDirectorInviteInput {
 export interface AcceptDirectorInviteResult {
   success: boolean;
   message?: string;
+}
+
+async function findAuthUserByEmail(
+  admin: SupabaseClient,
+  email: string,
+): Promise<{ id: string } | null> {
+  const target = email.toLowerCase();
+  let page = 1;
+  const perPage = 1000;
+  while (true) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error || !data?.users) return null;
+    const found = data.users.find((u) => u.email?.toLowerCase() === target);
+    if (found) return { id: found.id };
+    if (data.users.length < perPage) return null;
+    page += 1;
+    if (page > 50) return null;
+  }
+}
+
+function isUserAlreadyExistsError(err: { message?: string; code?: string } | null): boolean {
+  if (!err) return false;
+  if (err.code === 'email_exists' || err.code === 'user_already_exists') return true;
+  const msg = (err.message || '').toLowerCase();
+  return (
+    msg.includes('already registered') ||
+    msg.includes('already exists') ||
+    msg.includes('user already')
+  );
 }
 
 export async function acceptDirectorInvite(
@@ -54,6 +83,9 @@ export async function acceptDirectorInvite(
     };
   }
 
+  let userId: string;
+  let emailSent = true;
+
   const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
     claims.email,
     {
@@ -61,16 +93,37 @@ export async function acceptDirectorInvite(
     },
   );
 
-  if (inviteError || !inviteData.user) {
+  if (inviteError && isUserAlreadyExistsError(inviteError)) {
+    const existingAuthUser = await findAuthUserByEmail(admin, claims.email);
+    if (!existingAuthUser) {
+      console.error(
+        '[acceptDirectorInvite] auth user reported as existing but lookup failed:',
+        inviteError,
+      );
+      return {
+        success: false,
+        message: 'An account exists for this email but we could not look it up. Contact ThinkBiz Support.',
+      };
+    }
+    userId = existingAuthUser.id;
+    emailSent = false;
+  } else if (inviteError || !inviteData?.user) {
     console.error('[acceptDirectorInvite] inviteUserByEmail failed:', inviteError);
-    return { success: false, message: 'Failed to send invite email. Try again.' };
+    return {
+      success: false,
+      message: inviteError?.message
+        ? `Could not send invite email: ${inviteError.message}`
+        : 'Failed to send invite email. Try again.',
+    };
+  } else {
+    userId = inviteData.user.id;
   }
 
   if (existingMember) {
     const { error: updateError } = await admin
       .from('members')
       .update({
-        auth_user_id: inviteData.user.id,
+        auth_user_id: userId,
         current_club_id: claims.clubId,
         club_director: true,
       })
@@ -82,7 +135,7 @@ export async function acceptDirectorInvite(
     }
   } else {
     const { error: insertError } = await admin.from('members').insert({
-      auth_user_id: inviteData.user.id,
+      auth_user_id: userId,
       current_club_id: claims.clubId,
       email: claims.email,
       club_director: true,
@@ -94,5 +147,10 @@ export async function acceptDirectorInvite(
     }
   }
 
-  return { success: true };
+  return {
+    success: true,
+    message: emailSent
+      ? undefined
+      : 'This email already has a ThinkBiz account — sign in with your existing password to finish setup.',
+  };
 }
