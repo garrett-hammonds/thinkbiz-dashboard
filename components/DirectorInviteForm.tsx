@@ -13,6 +13,7 @@ export default function DirectorInviteForm({ token, email, clubName }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [signInPath, setSignInPath] = useState(false);
 
   const handleClaim = async () => {
     setIsSubmitting(true);
@@ -22,6 +23,7 @@ export default function DirectorInviteForm({ token, email, clubName }: Props) {
     setIsSubmitting(false);
 
     if (result.success) {
+      setSignInPath(Boolean(result.message));
       setDone(true);
     } else {
       setError(result.message || 'Failed to claim invite.');
@@ -29,6 +31,24 @@ export default function DirectorInviteForm({ token, email, clubName }: Props) {
   };
 
   if (done) {
+    if (signInPath) {
+      return (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-card p-8 text-center">
+          <h2 className="text-2xl font-bold text-foreground mb-4">You already have an account</h2>
+          <div className="border-t-4 border-primary w-16 mx-auto mb-4" />
+          <p className="text-base leading-relaxed text-gray-900 mb-6">
+            <strong>{email}</strong> is already registered. Sign in with your existing password
+            and we&apos;ll walk you through setting up your {clubName} Director profile.
+          </p>
+          <a
+            href="/login"
+            className="inline-block bg-primary text-white hover:bg-secondary rounded-lg px-6 py-3 font-semibold transition-colors duration-200"
+          >
+            Go to Sign In
+          </a>
+        </div>
+      );
+    }
     return (
       <div className="bg-white rounded-xl border border-gray-100 shadow-card p-8 text-center">
         <h2 className="text-2xl font-bold text-foreground mb-4">Check your email</h2>
