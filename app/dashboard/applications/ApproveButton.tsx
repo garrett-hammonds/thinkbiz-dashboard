@@ -15,6 +15,9 @@ export default function ApproveButton({ applicationId }: { applicationId: string
       if (!res.success) {
         alert(res.message);
       } else {
+        if (res.message) {
+          alert(res.message);
+        }
         router.refresh();
       }
     } catch (error) {
