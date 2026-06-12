@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { User, LifeBuoy, Menu, X, UserPlus, Shield, ClipboardList } from "lucide-react";
+import { User, LifeBuoy, Menu, X, UserPlus, Shield, ClipboardList, MessageSquare } from "lucide-react";
 
-export function MobileMenu({ canViewApps, isAdmin, isLoggedIn }: { canViewApps: boolean; isAdmin: boolean; isLoggedIn: boolean }) {
+export function MobileMenu({ canViewApps, isAdmin, isLoggedIn, chatUnread = 0 }: { canViewApps: boolean; isAdmin: boolean; isLoggedIn: boolean; chatUnread?: number }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -40,6 +40,22 @@ export function MobileMenu({ canViewApps, isAdmin, isLoggedIn }: { canViewApps: 
               <ClipboardList className="h-4 w-4" aria-hidden="true" />
               Applications
               <Shield className="h-4 w-4 ml-auto text-primary opacity-70" />
+            </Link>
+          )}
+
+          {isLoggedIn && (
+            <Link
+              href="/chat"
+              className="flex w-full justify-start items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => setIsOpen(false)}
+            >
+              <MessageSquare className="h-4 w-4" aria-hidden="true" />
+              Chat
+              {chatUnread > 0 && (
+                <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 py-0.5 text-xs font-bold text-gray-900">
+                  {chatUnread > 99 ? '99+' : chatUnread}
+                </span>
+              )}
             </Link>
           )}
 
