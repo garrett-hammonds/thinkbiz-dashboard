@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { User, LifeBuoy, Shield, ClipboardList, UserPlus } from "lucide-react";
+import { User, LifeBuoy, Shield, ClipboardList, UserPlus, MessageSquare } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { getMemberForUser } from "@/utils/supabase/getMember";
 import { MobileMenu } from "./mobile-menu";
@@ -11,11 +11,20 @@ export async function Navbar() {
 
   let canViewApps = false;
   let isAdmin = false;
+  let chatUnread = 0;
 
   if (user) {
     const member = await getMemberForUser(supabase, user);
     canViewApps = !!(member?.is_admin || member?.club_director);
     isAdmin = !!member?.is_admin;
+
+    // Errors (e.g. chat migration not applied yet) just leave the badge at 0
+    const { data: unreadRows } = await supabase.rpc('chat_unread_counts');
+    if (unreadRows) {
+      chatUnread = (unreadRows as { unread: number }[]).reduce(
+        (sum, row) => sum + Number(row.unread), 0
+      );
+    }
   }
 
   return (
@@ -64,6 +73,21 @@ export async function Navbar() {
             </Link>
           )}
 
+          {user && (
+            <Link
+              href="/chat"
+              className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:inline-flex"
+            >
+              <MessageSquare className="h-4 w-4" aria-hidden="true" />
+              Chat
+              {chatUnread > 0 && (
+                <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 py-0.5 text-xs font-bold text-gray-900">
+                  {chatUnread > 99 ? '99+' : chatUnread}
+                </span>
+              )}
+            </Link>
+          )}
+
           <Link
             href="/support"
             className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
@@ -92,7 +116,7 @@ export async function Navbar() {
           )}
         </div>
 
-        <MobileMenu canViewApps={canViewApps} isAdmin={isAdmin} isLoggedIn={!!user} />
+        <MobileMenu canViewApps={canViewApps} isAdmin={isAdmin} isLoggedIn={!!user} chatUnread={chatUnread} />
       </nav>
     </header>
   );
