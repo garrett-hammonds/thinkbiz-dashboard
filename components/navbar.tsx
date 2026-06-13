@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { User, LifeBuoy, Shield, ClipboardList, UserPlus, MessageSquare } from "lucide-react";
+import { User, LifeBuoy, Shield, ClipboardList, UserPlus, MessageSquare, Users } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { getMemberForUser } from "@/utils/supabase/getMember";
 import { MobileMenu } from "./mobile-menu";
@@ -58,6 +58,17 @@ export async function Navbar() {
             >
               <UserPlus className="h-4 w-4" aria-hidden="true" />
               Invite Director
+              <Shield className="inline-block w-3 h-3 ml-1.5 opacity-70" />
+            </Link>
+          )}
+
+          {canViewApps && (
+            <Link
+              href="/dashboard/roster"
+              className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:inline-flex"
+            >
+              <Users className="h-4 w-4" aria-hidden="true" />
+              Members
               <Shield className="inline-block w-3 h-3 ml-1.5 opacity-70" />
             </Link>
           )}

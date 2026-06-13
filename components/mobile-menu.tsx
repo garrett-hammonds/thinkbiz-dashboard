@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { User, LifeBuoy, Menu, X, UserPlus, Shield, ClipboardList, MessageSquare } from "lucide-react";
+import { User, LifeBuoy, Menu, X, UserPlus, Shield, ClipboardList, MessageSquare, Users } from "lucide-react";
 
 export function MobileMenu({ canViewApps, isAdmin, isLoggedIn, chatUnread = 0 }: { canViewApps: boolean; isAdmin: boolean; isLoggedIn: boolean; chatUnread?: number }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -27,6 +27,18 @@ export function MobileMenu({ canViewApps, isAdmin, isLoggedIn, chatUnread = 0 }:
             >
               <UserPlus className="h-4 w-4" aria-hidden="true" />
               Invite Director
+              <Shield className="h-4 w-4 ml-auto text-primary opacity-70" />
+            </Link>
+          )}
+
+          {canViewApps && (
+            <Link
+              href="/dashboard/roster"
+              className="flex w-full justify-start items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => setIsOpen(false)}
+            >
+              <Users className="h-4 w-4" aria-hidden="true" />
+              Members
               <Shield className="h-4 w-4 ml-auto text-primary opacity-70" />
             </Link>
           )}
