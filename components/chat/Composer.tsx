@@ -276,9 +276,7 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
           }}
           onKeyDown={handleKeyDown}
           rows={1}
-          placeholder={
-            uploading ? "Uploading image…" : `Message ${channelName} — use @ to mention someone`
-          }
+          placeholder={uploading ? "Uploading image…" : `Message ${channelName}`}
           className="max-h-40 min-h-[44px] flex-1 resize-y rounded-lg border border-gray-200 px-3 py-2.5 text-sm leading-relaxed focus:border-primary focus:outline-none"
         />
         <button

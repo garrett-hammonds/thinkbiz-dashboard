@@ -156,8 +156,13 @@ export function MessageList({
         const newDay =
           !prev || new Date(prev.created_at).toDateString() !== new Date(m.created_at).toDateString();
         const mentionsMe = m.mentions?.includes(me.memberId);
-        const canEditThis = m.member_id === me.memberId;
-        const canDeleteThis = canEditThis || canModerate;
+        const isMine = m.member_id === me.memberId;
+        const canDeleteThis = isMine || canModerate;
+        const bubbleClasses = mentionsMe
+          ? "border-accent/50 bg-accent/10"
+          : isMine
+            ? "border-primary/15 bg-primary/5"
+            : "border-gray-100 bg-slate-50";
 
         const reactionGroups = new Map<string, string[]>();
         for (const r of m.chat_message_reactions) {
@@ -176,11 +181,7 @@ export function MessageList({
               </div>
             )}
 
-            <div
-              className={`group relative flex gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-slate-50 ${
-                mentionsMe ? "border-l-2 border-accent bg-accent/5" : ""
-              }`}
-            >
+            <div className="group relative flex gap-3 px-2 py-1.5">
               <Avatar member={sender} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
@@ -221,7 +222,9 @@ export function MessageList({
                     </div>
                   </div>
                 ) : (
-                  <>
+                  <div
+                    className={`mt-1 w-fit max-w-full rounded-lg rounded-tl-none border px-3 py-2 ${bubbleClasses}`}
+                  >
                     {m.content && (
                       <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-900">
                         {renderContent(m.content, directoryMap)}
@@ -233,11 +236,11 @@ export function MessageList({
                         <img
                           src={m.image_url}
                           alt="Attachment"
-                          className="mt-2 max-h-72 max-w-xs rounded-lg border border-gray-100 object-contain"
+                          className={`${m.content ? "mt-2 " : ""}max-h-72 max-w-xs rounded-lg object-contain`}
                         />
                       </a>
                     )}
-                  </>
+                  </div>
                 )}
 
                 {reactionGroups.size > 0 && (
@@ -276,7 +279,7 @@ export function MessageList({
                   >
                     <SmilePlus className="h-4 w-4" />
                   </button>
-                  {canEditThis && (
+                  {isMine && (
                     <button
                       onClick={() => startEdit(m)}
                       title="Edit message"
