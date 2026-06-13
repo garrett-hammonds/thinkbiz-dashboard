@@ -126,6 +126,7 @@ export async function acceptDirectorInvite(
         auth_user_id: userId,
         current_club_id: claims.clubId,
         club_director: true,
+        is_active: true,
       })
       .eq('id', existingMember.id);
 
@@ -139,6 +140,7 @@ export async function acceptDirectorInvite(
       current_club_id: claims.clubId,
       email: claims.email,
       club_director: true,
+      is_active: true,
     });
 
     if (insertError) {
