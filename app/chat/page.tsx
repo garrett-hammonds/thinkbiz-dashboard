@@ -70,7 +70,7 @@ export default async function ChatPage() {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-gray-50">
+    <div className="flex h-dvh flex-col bg-gray-50">
       <Navbar />
       <main className="mx-auto flex w-full max-w-7xl flex-1 overflow-hidden px-0 sm:px-6 lg:px-8 sm:py-4">
         <ChatApp

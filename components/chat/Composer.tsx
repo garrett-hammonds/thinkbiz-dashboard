@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import imageCompression from "browser-image-compression";
-import { ImagePlus, Send, X } from "lucide-react";
+import { ImagePlus, Send, Smile, X } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import type { ChatMember } from "./types";
 import { memberName } from "./types";
@@ -16,12 +16,22 @@ type Props = {
 
 type PendingMention = { id: string; name: string };
 
+const COMPOSER_EMOJIS = [
+  "😀", "😄", "😂", "🤣", "😊", "😉", "😍", "🥰",
+  "😎", "🤔", "🤗", "😅", "😢", "😮", "😴", "🤯",
+  "👍", "👎", "👏", "🙌", "🙏", "🤝", "💪", "👋",
+  "❤️", "💙", "💯", "🔥", "⭐", "✨", "🎉", "🎊",
+  "✅", "❌", "❓", "❗", "💡", "📈", "📉", "💰",
+  "🏆", "🎯", "🚀", "📅", "📞", "✉️", "☕", "🍕",
+];
+
 export function Composer({ directory, authUserId, channelName, onSend }: Props) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [showEmoji, setShowEmoji] = useState(false);
   const [suggestions, setSuggestions] = useState<ChatMember[]>([]);
   const [highlighted, setHighlighted] = useState(0);
   const mentionQueryRef = useRef<{ start: number; query: string } | null>(null);
@@ -69,6 +79,20 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
     mentionQueryRef.current = null;
     requestAnimationFrame(() => {
       const pos = ctx.start + name.length + 2;
+      ta.focus();
+      ta.setSelectionRange(pos, pos);
+    });
+  };
+
+  const insertEmoji = (emoji: string) => {
+    const ta = textareaRef.current;
+    const start = ta?.selectionStart ?? text.length;
+    const end = ta?.selectionEnd ?? text.length;
+    setText(text.slice(0, start) + emoji + text.slice(end));
+    setShowEmoji(false);
+    requestAnimationFrame(() => {
+      if (!ta) return;
+      const pos = start + emoji.length;
       ta.focus();
       ta.setSelectionRange(pos, pos);
     });
@@ -195,6 +219,26 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
 
       {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
 
+      {showEmoji && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setShowEmoji(false)} />
+          <div className="absolute bottom-full left-3 z-20 mb-1 grid w-72 grid-cols-8 gap-0.5 rounded-lg border border-gray-100 bg-white p-2 shadow-card">
+            {COMPOSER_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  insertEmoji(emoji);
+                }}
+                className="rounded p-1 text-lg hover:bg-muted"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
       <div className="flex items-end gap-2">
         <input
           ref={fileInputRef}
@@ -214,6 +258,15 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
         >
           <ImagePlus className="h-5 w-5" />
         </button>
+        <button
+          onClick={() => setShowEmoji((v) => !v)}
+          title="Add emoji"
+          className={`rounded-lg p-2.5 transition-colors hover:bg-muted hover:text-foreground ${
+            showEmoji ? "bg-muted text-foreground" : "text-gray-500"
+          }`}
+        >
+          <Smile className="h-5 w-5" />
+        </button>
         <textarea
           ref={textareaRef}
           value={text}
@@ -223,9 +276,7 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
           }}
           onKeyDown={handleKeyDown}
           rows={1}
-          placeholder={
-            uploading ? "Uploading image…" : `Message ${channelName} — use @ to mention someone`
-          }
+          placeholder={uploading ? "Uploading image…" : `Message ${channelName}`}
           className="max-h-40 min-h-[44px] flex-1 resize-y rounded-lg border border-gray-200 px-3 py-2.5 text-sm leading-relaxed focus:border-primary focus:outline-none"
         />
         <button
