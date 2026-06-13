@@ -27,6 +27,15 @@ async function fetchSignedInUserIds(
   return signedIn;
 }
 
+function RosterShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">{children}</main>
+    </div>
+  );
+}
+
 export default async function RosterPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -45,55 +54,63 @@ export default async function RosterPage() {
     redirect('/onboarding');
   }
 
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceRoleKey) {
+  // This roster is scoped to the director's own club. A director without a
+  // club assignment has no roster to show.
+  if (!member.current_club_id) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <h1 className="mb-4 text-4xl font-black leading-tight tracking-tight text-foreground">
-            Member Roster
-          </h1>
-          <p className="text-muted-foreground">
-            The roster is temporarily unavailable. Please contact ThinkBiz Support.
-          </p>
-        </main>
-      </div>
+      <RosterShell>
+        <h1 className="mb-4 text-4xl font-black leading-tight tracking-tight text-foreground">
+          Member Roster
+        </h1>
+        <p className="text-muted-foreground">
+          You aren&apos;t assigned to a club yet, so there&apos;s no roster to show.
+        </p>
+      </RosterShell>
     );
   }
 
-  // Service-role client: directors need to see fellow club members and every
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    return (
+      <RosterShell>
+        <h1 className="mb-4 text-4xl font-black leading-tight tracking-tight text-foreground">
+          Member Roster
+        </h1>
+        <p className="text-muted-foreground">
+          The roster is temporarily unavailable. Please contact ThinkBiz Support.
+        </p>
+      </RosterShell>
+    );
+  }
+
+  // Service-role client: a director needs to see fellow club members and each
   // member's join status, which member-scoped RLS would otherwise hide. Access
-  // is already gated above to admins and club directors.
+  // is already gated above to directors/admins, and the query below is locked
+  // to the viewer's own club.
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     serviceRoleKey,
   );
 
-  let membersQuery = admin
-    .from('members')
-    .select(
-      'id, first_name, last_name, email, phone_number, company_name, title, member_headshot, current_club_id, is_admin, club_director, auth_user_id',
-    )
-    .eq('is_active', true)
-    .order('first_name', { ascending: true });
-
-  // Admins see the whole organization; club directors see only their own club.
-  if (!member.is_admin) {
-    membersQuery = membersQuery.eq('current_club_id', member.current_club_id);
-  }
-
-  const [{ data: membersData }, { data: clubsData }, signedInIds] =
+  const [{ data: membersData }, { data: clubData }, signedInIds] =
     await Promise.all([
-      membersQuery,
-      admin.from('clubs').select('id, name, display_name'),
+      admin
+        .from('members')
+        .select(
+          'id, first_name, last_name, email, phone_number, company_name, title, member_headshot, is_admin, club_director, auth_user_id',
+        )
+        .eq('is_active', true)
+        .eq('current_club_id', member.current_club_id)
+        .order('first_name', { ascending: true }),
+      admin
+        .from('clubs')
+        .select('name, display_name')
+        .eq('id', member.current_club_id)
+        .maybeSingle(),
       fetchSignedInUserIds(admin),
     ]);
 
-  const clubNames = new Map<string, string>();
-  for (const c of clubsData || []) {
-    clubNames.set(c.id, c.display_name || c.name);
-  }
+  const clubName = clubData?.display_name || clubData?.name || 'your club';
 
   const rows: RosterRow[] = (membersData || []).map((m) => ({
     id: m.id,
@@ -102,7 +119,6 @@ export default async function RosterPage() {
     phone: m.phone_number ?? null,
     company: m.company_name ?? null,
     title: m.title ?? null,
-    clubName: m.current_club_id ? clubNames.get(m.current_club_id) ?? null : null,
     headshot: m.member_headshot ?? null,
     isDirector: !!m.club_director,
     isAdmin: !!m.is_admin,
@@ -110,22 +126,17 @@ export default async function RosterPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-black leading-tight tracking-tight text-foreground">
-            Member Roster
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {member.is_admin
-              ? 'All active members across every club, and who has joined the app.'
-              : 'Your active club members, and who has joined the app.'}
-          </p>
-        </div>
+    <RosterShell>
+      <div className="mb-8">
+        <h1 className="text-4xl font-black leading-tight tracking-tight text-foreground">
+          {clubName} Roster
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Your active club members, and who has joined the app.
+        </p>
+      </div>
 
-        <RosterTable rows={rows} showClub={!!member.is_admin} />
-      </main>
-    </div>
+      <RosterTable rows={rows} />
+    </RosterShell>
   );
 }
