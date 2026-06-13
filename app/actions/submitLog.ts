@@ -27,6 +27,19 @@ export async function submitLogAction(formData: FormData) {
   const one_on_ones_had = parseInt(formData.get('one_on_ones_had') as string || formData.get('one-on-ones') as string || '0', 10);
   const referrals_given = parseInt(formData.get('referrals_given') as string || formData.get('referrals-given') as string || '0', 10);
 
+  // Parse the closed-business "thank you" entries up front so we can still
+  // record them even when a weekly log already exists for this week.
+  let validThanks: { memberId: string; amount: string }[] = [];
+  const thanksJson = formData.get('revenue_thanks') as string;
+  if (thanksJson) {
+    try {
+      const thanks: { memberId: string; amount: string }[] = JSON.parse(thanksJson);
+      validThanks = thanks.filter((entry) => parseFloat(entry.amount) > 0);
+    } catch (e) {
+      console.error('Error parsing revenue_thanks:', e);
+    }
+  }
+
   const { data: log, error: logError } = await supabase
     .from('weekly_logs')
     .insert({
@@ -40,43 +53,64 @@ export async function submitLogAction(formData: FormData) {
     .select('id')
     .single();
 
+  let logId: string | undefined = log?.id;
+  let alreadyLogged = false;
+
   if (logError || !log) {
-   // table has constraint prevent multiple logs per week
-    if (logError.code === '23505') {
-      redirect('/log?message=You have already submitted a log for this week!');
+    // weekly_logs has a unique constraint preventing multiple logs per week.
+    // Rather than dropping the closed business the member just entered, attach
+    // it to the log that already exists for this week.
+    if (logError?.code === '23505') {
+      // Already logged this week. If there's no closed business to add, there's
+      // nothing more to do — tell them and stop.
+      if (validThanks.length === 0) {
+        redirect('/log?message=You have already submitted a log for this week!');
+      }
+
+      const { data: existingLog } = await supabase
+        .from('weekly_logs')
+        .select('id')
+        .eq('member_id', memberData.id)
+        .eq('week_ending', week_ending)
+        .maybeSingle();
+
+      if (!existingLog) {
+        redirect('/log?message=You have already submitted a log for this week!');
+      }
+
+      logId = existingLog.id;
+      alreadyLogged = true;
+    } else {
+      console.error('Error inserting weekly log:', logError);
+      redirect('/log?message=Failed to insert log. Please try again.');
     }
-    // Generic fallback
-    redirect('/log?message=Failed to insert log. Please try again.');
   }
 
-  const thanksJson = formData.get('revenue_thanks') as string;
-  if (thanksJson) {
-    try {
-      const thanks: { memberId: string; amount: string }[] = JSON.parse(thanksJson);
-      
-      const validThanks = thanks.filter(entry => parseFloat(entry.amount) > 0);
-      
-      if (validThanks.length > 0) {
-        const mappedThanks = validThanks.map(entry => ({
-          weekly_log_id: log.id,
-          thanking_member_id: memberData.id,
-          thanked_member_id: (entry.memberId === 'external' || entry.memberId === '') ? null : entry.memberId,
-          revenue_amount: parseFloat(entry.amount)
-        }));
-        
-        const { error: revenueError } = await supabase
-          .from('closed_business_thanks')
-          .insert(mappedThanks);
-          
-        if (revenueError) {
-          console.error('Error inserting revenue:', revenueError);
-        }
-      }
-    } catch (e) {
-      console.error('Error parsing revenue_thanks:', e);
+  if (validThanks.length > 0 && logId) {
+    const mappedThanks = validThanks.map((entry) => ({
+      weekly_log_id: logId,
+      thanking_member_id: memberData.id,
+      thanked_member_id:
+        entry.memberId === 'external' || entry.memberId === '' ? null : entry.memberId,
+      revenue_amount: parseFloat(entry.amount),
+    }));
+
+    const { error: revenueError } = await supabase
+      .from('closed_business_thanks')
+      .insert(mappedThanks);
+
+    if (revenueError) {
+      // Surface the failure instead of reporting a false success — otherwise
+      // the closed business is silently lost.
+      console.error('Error inserting revenue:', revenueError);
+      redirect('/log?message=Your log was saved, but the closed business could not be recorded. Please try again.');
     }
   }
 
   revalidatePath('/dashboard');
+
+  if (alreadyLogged) {
+    redirect('/dashboard?message=Closed business added to your existing log for this week');
+  }
   redirect('/dashboard?message=Log submitted successfully');
 }

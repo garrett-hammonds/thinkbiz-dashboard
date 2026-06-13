@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { getMemberForUser } from '@/utils/supabase/getMember';
+import { getChatDirectory } from '@/utils/supabase/directory';
 
 import { Navbar } from '@/components/navbar';
 import { ChatApp } from '@/components/chat/ChatApp';
@@ -27,7 +28,7 @@ export default async function ChatPage() {
   const [
     { data: channelsData },
     { data: membershipsData },
-    { data: directoryData },
+    directoryData,
     { data: unreadData },
   ] = await Promise.all([
     supabase
@@ -38,11 +39,11 @@ export default async function ChatPage() {
       .from('chat_channel_members')
       .select('channel_id')
       .eq('member_id', member.id),
-    supabase
-      .from('members')
-      .select('id, first_name, last_name, member_headshot')
-      .eq('is_active', true)
-      .order('first_name'),
+    getChatDirectory({
+      memberId: member.id,
+      clubId: member.current_club_id,
+      isAdmin: !!member.is_admin,
+    }),
     supabase.rpc('chat_unread_counts'),
   ]);
 
@@ -76,7 +77,7 @@ export default async function ChatPage() {
         <ChatApp
           me={me}
           initialChannels={channels}
-          directory={(directoryData as ChatMember[]) || []}
+          directory={directoryData as ChatMember[]}
           initialUnread={unreadCounts}
         />
       </main>

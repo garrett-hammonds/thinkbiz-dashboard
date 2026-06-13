@@ -125,6 +125,10 @@ export async function approveApplication(applicationId: string) {
       title: application.title,
       bio: application.bio,
       core_skills: application.core_skills ? application.core_skills.split(',').map((skill: string) => skill.trim()) : [],
+      // Active members are the ones surfaced in club directories (chat, the
+      // weekly-log thank-you picker, the roster). Approving an application
+      // makes them a member, so mark them active.
+      is_active: true,
     };
 
     const { data: existingMember } = await supabaseAdmin
