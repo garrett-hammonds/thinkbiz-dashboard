@@ -18,7 +18,6 @@ export interface RosterRow {
   phone: string | null;
   company: string | null;
   title: string | null;
-  clubName: string | null;
   headshot: string | null;
   isDirector: boolean;
   isAdmin: boolean;
@@ -34,13 +33,7 @@ function initials(name: string): string {
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 }
 
-export function RosterTable({
-  rows,
-  showClub,
-}: {
-  rows: RosterRow[];
-  showClub: boolean;
-}) {
+export function RosterTable({ rows }: { rows: RosterRow[] }) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
 
@@ -57,8 +50,7 @@ export function RosterTable({
         r.name.toLowerCase().includes(q) ||
         r.email.toLowerCase().includes(q) ||
         (r.company || '').toLowerCase().includes(q) ||
-        (r.title || '').toLowerCase().includes(q) ||
-        (r.clubName || '').toLowerCase().includes(q)
+        (r.title || '').toLowerCase().includes(q)
       );
     });
   }, [rows, search, status]);
@@ -142,7 +134,6 @@ export function RosterTable({
                 <th className="px-6 py-3">Member</th>
                 <th className="px-6 py-3">Contact</th>
                 <th className="px-6 py-3">Company</th>
-                {showClub && <th className="px-6 py-3">Club</th>}
                 <th className="px-6 py-3">App status</th>
               </tr>
             </thead>
@@ -191,11 +182,6 @@ export function RosterTable({
                   <td className="px-6 py-4 text-sm text-gray-900">
                     {r.company || <span className="text-gray-400">—</span>}
                   </td>
-                  {showClub && (
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {r.clubName || <span className="text-gray-400">—</span>}
-                    </td>
-                  )}
                   <td className="px-6 py-4">
                     <StatusBadge joined={r.joined} />
                   </td>
@@ -238,12 +224,6 @@ export function RosterTable({
                     <div className="flex items-center gap-2 text-gray-500">
                       <Building2 className="h-3.5 w-3.5 text-gray-400" />
                       {r.company}
-                    </div>
-                  )}
-                  {showClub && r.clubName && (
-                    <div className="flex items-center gap-2 text-gray-500">
-                      <Shield className="h-3.5 w-3.5 text-gray-400" />
-                      {r.clubName}
                     </div>
                   )}
                 </div>
