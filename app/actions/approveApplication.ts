@@ -3,6 +3,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { createClient as createAdminClient, type SupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { dispatchNotifications } from '@/lib/notifications/dispatch';
+import { applicationApprovedEmail } from '@/lib/email/templates';
 
 async function findAuthUserByEmail(
   admin: SupabaseClient,
@@ -137,6 +139,8 @@ export async function approveApplication(applicationId: string) {
       .ilike('email', application.email)
       .maybeSingle();
 
+    let memberId: string | undefined;
+
     if (existingMember) {
       const { error: updateMemberError } = await supabaseAdmin
         .from('members')
@@ -147,13 +151,19 @@ export async function approveApplication(applicationId: string) {
         console.error('[approveApplication] member update failed:', updateMemberError);
         return { success: false, message: 'Failed to update member profile.' };
       }
+      memberId = existingMember.id;
     } else {
-      const { error: insertError } = await supabaseAdmin.from('members').insert(memberData);
+      const { data: insertedMember, error: insertError } = await supabaseAdmin
+        .from('members')
+        .insert(memberData)
+        .select('id')
+        .single();
 
-      if (insertError) {
+      if (insertError || !insertedMember) {
         console.error('[approveApplication] member insert failed:', insertError);
         return { success: false, message: 'Failed to create member profile.' };
       }
+      memberId = insertedMember.id;
     }
 
     const { error: updateError } = await supabaseAdmin
@@ -163,6 +173,27 @@ export async function approveApplication(applicationId: string) {
 
     if (updateError) {
       return { success: false, message: 'Failed to update application status.' };
+    }
+
+    // Best-effort "you're approved" notification (separate from the Supabase
+    // auth invite email above). Never let a notification failure fail approval.
+    if (memberId) {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+      const email = applicationApprovedEmail({
+        firstName: application.first_name,
+        url: `${siteUrl}/dashboard`,
+      });
+      await dispatchNotifications({
+        category: 'application',
+        recipientMemberIds: [memberId],
+        push: {
+          title: 'Welcome to ThinkBiz!',
+          body: 'Your application has been approved. Tap to get started.',
+          url: `${siteUrl}/dashboard`,
+          tag: 'application-approved',
+        },
+        email,
+      });
     }
 
     return {

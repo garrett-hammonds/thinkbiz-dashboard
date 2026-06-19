@@ -4,8 +4,9 @@ import { useState, useTransition } from 'react';
 import { updateProfile, logout } from '@/app/actions/profile';
 import imageCompression from 'browser-image-compression';
 import { createClient } from '@/utils/supabase/client';
+import NotificationSettings, { type NotificationPrefs } from '@/components/NotificationSettings';
 
-export default function ProfileForm({ member }: { member: any }) {
+export default function ProfileForm({ member, prefs }: { member: any; prefs: NotificationPrefs }) {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -164,6 +165,11 @@ export default function ProfileForm({ member }: { member: any }) {
               defaultValue={member?.bio || ''}
               className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 focus:ring-2 focus:ring-primary focus:outline-none"
             ></textarea>
+          </div>
+
+          <div className="border-t border-gray-100 pt-6">
+            <h3 className="text-xl font-bold leading-snug text-foreground mb-4">Notifications</h3>
+            <NotificationSettings prefs={prefs} />
           </div>
 
           <div>

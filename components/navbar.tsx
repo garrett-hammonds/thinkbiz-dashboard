@@ -4,6 +4,7 @@ import { User, LifeBuoy, Shield, ClipboardList, UserPlus, MessageSquare, Users }
 import { createClient } from "@/utils/supabase/server";
 import { getMemberForUser } from "@/utils/supabase/getMember";
 import { MobileMenu } from "./mobile-menu";
+import ServiceWorkerRegister from "./ServiceWorkerRegister";
 
 export async function Navbar() {
   const supabase = await createClient();
@@ -29,6 +30,7 @@ export async function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card">
+      {user && <ServiceWorkerRegister />}
       <nav className="mx-auto flex h-24 md:h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
           href={user ? "/dashboard" : "/login"}

@@ -39,7 +39,7 @@ export async function updateProfile(formData: FormData) {
     return { success: false, message: 'Please provide valid URLs including http:// or https://' };
   }
 
-  const { error } = await supabase
+  const { data: updatedMember, error } = await supabase
     .from('members')
     .update({
       company_name,
@@ -51,10 +51,39 @@ export async function updateProfile(formData: FormData) {
       member_headshot,
       core_skills
     })
-    .eq('auth_user_id', user.id);
+    .eq('auth_user_id', user.id)
+    .select('id')
+    .single();
 
   if (error) {
     return { success: false, message: error.message };
+  }
+
+  // Notification preferences ride the same form. A checkbox is present in the
+  // FormData only when checked, so absence => false.
+  const cb = (name: string) => formData.get(name) === 'on';
+  if (updatedMember?.id) {
+    const { error: prefsError } = await supabase
+      .from('notification_preferences')
+      .upsert(
+        {
+          member_id: updatedMember.id,
+          email_enabled: cb('email_enabled'),
+          push_enabled: cb('push_enabled'),
+          email_chat: cb('email_chat'),
+          email_log_reminder: cb('email_log_reminder'),
+          email_application: cb('email_application'),
+          push_chat: cb('push_chat'),
+          push_log_reminder: cb('push_log_reminder'),
+          push_application: cb('push_application'),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'member_id' },
+      );
+    if (prefsError) {
+      // Don't fail the whole save — the profile itself updated fine.
+      console.error('[updateProfile] notification_preferences upsert failed:', prefsError);
+    }
   }
 
   revalidatePath('/profile');
