@@ -12,6 +12,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "ThinkBiz Solutions - Dashboard",
   description: "Professional networking group dashboard for ThinkBiz Solutions members.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "ThinkBiz",
+  },
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
