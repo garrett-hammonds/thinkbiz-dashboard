@@ -5,6 +5,7 @@ import { getMemberForUser } from '@/utils/supabase/getMember';
 import { Navbar } from "@/components/navbar";
 import { Scorecards } from "@/components/scorecards";
 import { DashboardCharts } from "@/components/dashboard-charts";
+import GettingStartedBanner from "@/components/GettingStartedBanner";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -90,6 +91,8 @@ export default async function DashboardPage() {
             Your ThinkBiz performance at a glance.
           </p>
         </div>
+
+        <GettingStartedBanner hasLoggedSuccess={logs.length > 0} />
 
         <section aria-label="Key metrics" className="mb-8">
           <Scorecards logsData={logs} revenueData={revenue} />

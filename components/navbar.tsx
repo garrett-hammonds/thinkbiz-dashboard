@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { User, LifeBuoy, Shield, ClipboardList, UserPlus, MessageSquare, Users } from "lucide-react";
+import { User, LifeBuoy, Shield, ClipboardList, UserPlus, MessageSquare, Users, Rocket } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { getMemberForUser } from "@/utils/supabase/getMember";
 import { MobileMenu } from "./mobile-menu";
@@ -98,6 +98,16 @@ export async function Navbar() {
                   {chatUnread > 99 ? '99+' : chatUnread}
                 </span>
               )}
+            </Link>
+          )}
+
+          {user && (
+            <Link
+              href="/getting-started"
+              className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:inline-flex"
+            >
+              <Rocket className="h-4 w-4" aria-hidden="true" />
+              Getting Started
             </Link>
           )}
 
