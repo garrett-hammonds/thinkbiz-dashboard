@@ -62,6 +62,23 @@ export function applicationApprovedEmail(opts: { firstName?: string; url: string
   };
 }
 
+export function memberInviteEmail(opts: { firstName?: string; url: string }): RenderedEmail {
+  const name = opts.firstName ? `, ${opts.firstName}` : '';
+  return {
+    subject: `Your invitation to ${BRAND}`,
+    html: layout({
+      heading: `You're invited to ${BRAND}`,
+      paragraphs: [
+        `Hi${escapeHtml(name)} — your club director invited you to join ${BRAND}.`,
+        `Click below to set up your account, complete your profile, and start connecting with your club. This link will sign you in.`,
+      ],
+      ctaLabel: 'Accept your invitation',
+      ctaUrl: opts.url,
+    }),
+    text: `You're invited to ${BRAND}! Accept your invitation and set up your account here: ${opts.url}`,
+  };
+}
+
 export function weeklyLogReminderEmail(opts: { firstName?: string; url: string }): RenderedEmail {
   const name = opts.firstName ? ` ${opts.firstName}` : '';
   return {

@@ -9,7 +9,10 @@ import {
   Phone,
   Shield,
   Building2,
+  Send,
+  Loader2,
 } from 'lucide-react';
+import { resendInvite } from '@/app/actions/resendInvite';
 
 export interface RosterRow {
   id: string;
@@ -183,7 +186,10 @@ export function RosterTable({ rows }: { rows: RosterRow[] }) {
                     {r.company || <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-6 py-4">
-                    <StatusBadge joined={r.joined} />
+                    <div className="flex flex-col items-start gap-2">
+                      <StatusBadge joined={r.joined} />
+                      {!r.joined && <ResendInviteButton memberId={r.id} />}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -204,7 +210,10 @@ export function RosterTable({ rows }: { rows: RosterRow[] }) {
                       )}
                     </div>
                   </div>
-                  <StatusBadge joined={r.joined} />
+                  <div className="flex flex-col items-end gap-2">
+                    <StatusBadge joined={r.joined} />
+                    {!r.joined && <ResendInviteButton memberId={r.id} />}
+                  </div>
                 </div>
                 <div className="flex flex-col gap-1 text-sm">
                   <a
@@ -271,6 +280,61 @@ function Avatar({ name, headshot }: { name: string; headshot: string | null }) {
   return (
     <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
       {initials(name)}
+    </div>
+  );
+}
+
+type InviteState = 'idle' | 'sending' | 'sent' | 'error';
+
+function ResendInviteButton({ memberId }: { memberId: string }) {
+  const [state, setState] = useState<InviteState>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleClick() {
+    if (state === 'sending') return;
+    setState('sending');
+    setError(null);
+    try {
+      const result = await resendInvite(memberId);
+      if (result.success) {
+        setState('sent');
+      } else {
+        setState('error');
+        setError(result.message || 'Could not send invite.');
+      }
+    } catch {
+      setState('error');
+      setError('Something went wrong. Try again.');
+    }
+  }
+
+  if (state === 'sent') {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        Invite sent
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={state === 'sending'}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-white px-2.5 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {state === 'sending' ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Send className="h-3.5 w-3.5" />
+        )}
+        {state === 'sending' ? 'Sending…' : state === 'error' ? 'Retry invite' : 'Resend invite'}
+      </button>
+      {state === 'error' && error && (
+        <span className="max-w-48 text-xs text-red-600">{error}</span>
+      )}
     </div>
   );
 }
