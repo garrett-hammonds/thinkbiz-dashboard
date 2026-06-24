@@ -36,7 +36,13 @@ function layout(opts: { heading: string; paragraphs: string[]; ctaLabel: string;
         <h1 style="margin:0 0 20px;font-size:20px;color:#0f172a;">${escapeHtml(opts.heading)}</h1>
         ${body}
         <p style="margin:24px 0 0;">
-          <a href="${encodeURI(opts.ctaUrl)}" style="display:inline-block;background:${PRIMARY};color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 24px;border-radius:8px;">${escapeHtml(opts.ctaLabel)}</a>
+          <!-- escapeHtml (not encodeURI): ctaUrl is already a fully-formed,
+               percent-encoded URL from URLSearchParams. encodeURI would re-escape
+               its '%' characters (e.g. next=%2F... → next=%252F...), corrupting
+               query params — that double-encoding once sent password-reset links
+               to /dashboard instead of /update-password. escapeHtml only makes the
+               URL safe inside the href attribute and leaves the encoding intact. -->
+          <a href="${escapeHtml(opts.ctaUrl)}" style="display:inline-block;background:${PRIMARY};color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 24px;border-radius:8px;">${escapeHtml(opts.ctaLabel)}</a>
         </p>
         <p style="margin:28px 0 0;font-size:12px;color:#94a3b8;">You're receiving this because notifications are enabled on your ${BRAND} account. You can change this anytime in your profile settings.</p>
       </td></tr>

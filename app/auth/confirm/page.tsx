@@ -16,6 +16,23 @@ import { confirmAuthLink } from './actions';
 // server action. Verification happens only there, behind a real click that
 // passive prefetches can't trigger, so the token survives for the human.
 
+// Resolve the post-verification destination, defending against a `next` that
+// arrived still-encoded. A correct `next` is always an absolute in-app path
+// ("/update-password"). Emails sent before the template stopped double-encoding
+// links deliver it as "%2Fupdate-password" instead — decode once so those links
+// still land on the right page rather than silently falling back to /dashboard.
+function resolveNext(raw: string | undefined): string {
+  let value = raw ?? '';
+  if (value && !value.startsWith('/')) {
+    try {
+      value = decodeURIComponent(value);
+    } catch {
+      // Malformed encoding — fall through to the default below.
+    }
+  }
+  return value.startsWith('/') ? value : '/dashboard';
+}
+
 const COPY: Record<string, { heading: string; body: string }> = {
   recovery: {
     heading: 'Reset your password',
@@ -52,7 +69,7 @@ export default async function ConfirmPage({
     heading: 'Continue to ThinkBiz Solutions',
     body: 'Click below to continue.',
   };
-  const safeNext = next && next.startsWith('/') ? next : '/dashboard';
+  const safeNext = resolveNext(next);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
