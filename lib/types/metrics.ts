@@ -5,7 +5,9 @@
 export interface WeeklyLog {
   visitors_brought: number;
   one_on_ones_had: number;
-  referrals_given: number;
+  // Written by the log form, but not read by the dashboard, so the dashboard
+  // queries don't select it. Optional here to match what's actually fetched.
+  referrals_given?: number;
   // The week the activity happened (date the member selected). Preferred over
   // created_at for time-bucketing so a late submission lands in the right week.
   week_ending?: string | null;

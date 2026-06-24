@@ -34,9 +34,13 @@ export default async function DashboardPage({
 
   const member = memberData;
 
+  // Only the columns the scorecards and charts actually read — avoids shipping
+  // every weekly_logs column (ids, referrals_given, etc.) over the wire.
+  const LOG_COLUMNS = 'visitors_brought, one_on_ones_had, week_ending, created_at';
+
   const logsPromise = supabase
     .from('weekly_logs')
-    .select('*')
+    .select(LOG_COLUMNS)
     .eq('member_id', member.id);
 
   const revenuePromise = supabase
@@ -69,7 +73,7 @@ export default async function DashboardPage({
 
     const clubLogsPromise = supabase
     .from('weekly_logs')
-    .select('*')
+    .select(LOG_COLUMNS)
     .eq('club_id', member.current_club_id);
 
     const clubRevenuePromise = supabase
