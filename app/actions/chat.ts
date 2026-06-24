@@ -1,8 +1,40 @@
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/admin';
 import { getMemberForUser } from '@/utils/supabase/getMember';
+import { dispatchChatMessageNotifications } from '@/lib/notifications/chat';
 import { revalidatePath } from 'next/cache';
+
+// Fires push + email notifications for a just-sent chat message. The web client
+// calls this (fire-and-forget) immediately after inserting a message, so chat
+// notifications work without relying on a manually-configured Supabase Database
+// Webhook. Best-effort and idempotent: the dispatcher claims the message
+// atomically, so calling this more than once (or alongside the webhook) is safe.
+export async function notifyChatMessage(messageId: string): Promise<void> {
+  const id = (messageId || '').trim();
+  if (!id) return;
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const member = await getMemberForUser(supabase, user);
+  if (!member) return;
+
+  // Only the message's own author may trigger its notifications. This reads the
+  // authoritative author server-side rather than trusting anything from the
+  // client beyond the message id.
+  const admin = createAdminClient();
+  const { data: message } = await admin
+    .from('chat_messages')
+    .select('member_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (!message || message.member_id !== member.id) return;
+
+  await dispatchChatMessageNotifications(id);
+}
 
 export async function createChannel(formData: FormData) {
   const supabase = await createClient();

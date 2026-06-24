@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Hash, Lock, Plus, Compass, ArrowLeft, LogOut } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
-import { createChannel } from "@/app/actions/chat";
+import { createChannel, notifyChatMessage } from "@/app/actions/chat";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { Modal } from "@/components/Modal";
 import { MessageList } from "./MessageList";
@@ -222,6 +222,9 @@ export function ChatApp({ me, initialChannels, directory, initialUnread }: Props
     if (error) throw new Error(error.message);
     const msg = data as ChatMessage;
     setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+    // Trigger push/email notifications server-side. Fire-and-forget: it's
+    // best-effort and must never block or fail the send.
+    void notifyChatMessage(msg.id).catch(() => {});
   };
 
   const handleEdit = async (messageId: string, content: string) => {
