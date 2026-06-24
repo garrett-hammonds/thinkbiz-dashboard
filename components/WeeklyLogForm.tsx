@@ -50,16 +50,16 @@ export function WeeklyLogForm({ directory }: { directory: DirectoryMember[] }) {
 
   return (
     <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-card">
-      <h3 className="text-lg font-semibold leading-6 text-foreground">Log Your Weekly Activity</h3>
+      <h3 className="text-lg font-semibold leading-6 text-foreground">Log your weekly activity</h3>
       <p className="mt-1 text-sm text-gray-500">
-        Submit your stats for the week to keep your dashboard up to date.
+        Add your numbers for the week to keep your dashboard up to date.
       </p>
       <form action={submitLogAction} className="mt-6 space-y-6">
         <input type="hidden" name="revenue_thanks" value={JSON.stringify(thanks)} />
         <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2">
           <div>
             <label htmlFor="week-ending" className="block text-sm font-medium leading-6 text-gray-900">
-              Week Ending Date
+              Week ending
             </label>
             <div className="mt-2">
               <input
@@ -75,7 +75,7 @@ export function WeeklyLogForm({ directory }: { directory: DirectoryMember[] }) {
 
           <div>
             <label htmlFor="visitors-brought" className="block text-sm font-medium leading-6 text-gray-900">
-              Visitors Brought
+              Visitors brought
             </label>
             <div className="mt-2">
               <input
@@ -93,7 +93,7 @@ export function WeeklyLogForm({ directory }: { directory: DirectoryMember[] }) {
 
           <div>
             <label htmlFor="one-on-ones" className="block text-sm font-medium leading-6 text-gray-900">
-              1-on-1s Had
+              1-on-1s
             </label>
             <div className="mt-2">
               <input
@@ -111,7 +111,7 @@ export function WeeklyLogForm({ directory }: { directory: DirectoryMember[] }) {
 
           <div>
             <label htmlFor="referrals-given" className="block text-sm font-medium leading-6 text-gray-900">
-              Referrals Given
+              Referrals given
             </label>
             <div className="mt-2">
               <input
@@ -129,8 +129,8 @@ export function WeeklyLogForm({ directory }: { directory: DirectoryMember[] }) {
         </div>
 
         <div className="mt-8">
-          <h4 className="text-md font-semibold text-foreground">Closed Business (Thank You)</h4>
-          <p className="text-sm text-gray-500 mb-4">Record revenue generated from referrals.</p>
+          <h4 className="text-md font-semibold text-foreground">Closed business</h4>
+          <p className="text-sm text-gray-500 mb-4">Thank a member for revenue you closed from their referral.</p>
 
           {thanks.map((entry, index) => (
             <div key={index} className="flex gap-4 mb-4 items-end">
@@ -141,15 +141,15 @@ export function WeeklyLogForm({ directory }: { directory: DirectoryMember[] }) {
                   onChange={(e) => handleThanksChange(index, 'memberId', e.target.value)}
                   className={`mt-2 ${inputClasses}`}
                 >
-                  <option value="">Select member...</option>
-                  <option value="external">External/Visitor</option>
+                  <option value="">Select a member…</option>
+                  <option value="external">External / visitor</option>
                   {directory?.map(member => (
                     <option key={member.id} value={member.id}>{member.first_name} {member.last_name}</option>
                   ))}
                 </select>
               </div>
               <div className="flex-1">
-                <label className="block text-sm font-medium leading-6 text-gray-900">Dollar Amount</label>
+                <label className="block text-sm font-medium leading-6 text-gray-900">Amount</label>
                 <input
                   type="number"
                   step="0.01"
@@ -178,7 +178,7 @@ export function WeeklyLogForm({ directory }: { directory: DirectoryMember[] }) {
             onClick={addThanksEntry}
             className="text-primary hover:bg-primary/10 px-4 py-2 rounded-lg font-semibold mt-2 transition-colors"
           >
-            Add Another Thank You
+            Add another
           </button>
         </div>
 
@@ -187,7 +187,7 @@ export function WeeklyLogForm({ directory }: { directory: DirectoryMember[] }) {
             pendingLabel="Submitting…"
             className="rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-secondary focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
-            Submit Log
+            Submit log
           </SubmitButton>
         </div>
       </form>

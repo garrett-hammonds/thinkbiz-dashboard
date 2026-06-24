@@ -107,13 +107,13 @@ export default function ApplyPage() {
                         <div>
                             <label className="block text-sm font-semibold text-gray-900 mb-2">Club Name</label>
                             <select name="clubId" value={formData.clubId} onChange={handleChange} className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors" required disabled={isLoadingClubs}>
-                                <option value="">{isLoadingClubs ? 'Loading clubs...' : 'Select a club'}</option>
+                                <option value="">{isLoadingClubs ? 'Loading clubs…' : 'Select a club'}</option>
                                 {clubs.map((club, idx) => (
                                     <option key={idx} value={club.id}>{club.name}</option>
                                 ))}
                             </select>
                         </div>
-                        <button onClick={handleNext} className="w-full bg-primary text-white hover:bg-secondary rounded-lg px-6 py-3 font-semibold transition-colors duration-200 focus-visible:outline-primary disabled:opacity-50 mt-4">Next Step</button>
+                        <button onClick={handleNext} className="w-full bg-primary text-white hover:bg-secondary rounded-lg px-6 py-3 font-semibold transition-colors duration-200 focus-visible:outline-primary disabled:opacity-50 mt-4">Next step</button>
                     </div>
                 )}
 
@@ -138,7 +138,7 @@ export default function ApplyPage() {
                         <div className="flex space-x-4 pt-4">
                             <button type="button" onClick={handleBack} className="w-full text-primary hover:bg-primary/10 rounded-lg px-4 py-2 font-semibold transition-colors duration-200">Back</button>
                             <button type="submit" disabled={isSubmitting} className="w-full bg-primary text-white hover:bg-secondary rounded-lg px-6 py-3 font-semibold transition-colors duration-200 focus-visible:outline-primary disabled:opacity-50">
-                                {isSubmitting ? 'Submitting...' : 'Submit'}
+                                {isSubmitting ? 'Submitting…' : 'Submit application'}
                             </button>
                         </div>
                     </form>
@@ -146,9 +146,9 @@ export default function ApplyPage() {
 
                 {step === 3 && (
                     <div className="text-center py-6">
-                        <h2 className="text-3xl font-bold leading-snug text-foreground mb-4">Success!</h2>
+                        <h2 className="text-3xl font-bold leading-snug text-foreground mb-4">Application received</h2>
                         <div className="border-t-4 border-primary w-16 mx-auto mb-4"></div>
-                        <p className="text-base leading-relaxed text-gray-900">Your application has been submitted. A director will review your details and be in touch soon.</p>
+                        <p className="text-base leading-relaxed text-gray-900">Thanks for applying. A club director will review your details and be in touch soon.</p>
                     </div>
                 )}
             </div>
