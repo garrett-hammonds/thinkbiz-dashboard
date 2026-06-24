@@ -1,9 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useFormStatus } from 'react-dom';
 import { X } from 'lucide-react';
 import { submitLogAction } from '@/app/actions/submitLog';
+import SubmitButton from '@/components/SubmitButton';
 import type { DirectoryMember } from '@/utils/supabase/directory';
 
 // The weekly log is the single most important action in the product, so the
@@ -12,19 +12,6 @@ import type { DirectoryMember } from '@/utils/supabase/directory';
 // week-ending date can't be set unreasonably far in the future, and the submit
 // button reports its own pending state so a slow network can't trigger a
 // double submission.
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-secondary focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      {pending ? 'Submitting…' : 'Submit Log'}
-    </button>
-  );
-}
 
 export function WeeklyLogForm({ directory }: { directory: DirectoryMember[] }) {
   const [visitorsBrought, setVisitorsBrought] = useState('');
@@ -196,7 +183,12 @@ export function WeeklyLogForm({ directory }: { directory: DirectoryMember[] }) {
         </div>
 
         <div className="flex items-center justify-end mt-6">
-          <SubmitButton />
+          <SubmitButton
+            pendingLabel="Submitting…"
+            className="rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-secondary focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            Submit Log
+          </SubmitButton>
         </div>
       </form>
     </div>

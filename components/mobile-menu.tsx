@@ -1,23 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { User, LifeBuoy, Menu, X, UserPlus, Shield, ClipboardList, MessageSquare, Users, Rocket } from "lucide-react";
 
 export function MobileMenu({ canViewApps, isAdmin, isLoggedIn, chatUnread = 0 }: { canViewApps: boolean; isAdmin: boolean; isLoggedIn: boolean; chatUnread?: number }) {
   const [isOpen, setIsOpen] = useState(false);
 
+  // Close on Escape so a keyboard user is never trapped with the menu open.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isOpen]);
+
   return (
     <>
       <button
         className="md:hidden p-2 text-muted-foreground"
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={isOpen ? "Close menu" : "Open menu"}
+        aria-expanded={isOpen}
+        aria-controls="mobile-menu-panel"
       >
         {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
       </button>
 
       {isOpen && (
-        <div className="md:hidden border-t p-6 flex flex-col gap-4 absolute top-24 md:top-14 left-0 w-full bg-card shadow-lg z-50">
+        <>
+          {/* Click-outside dismiss: a transparent backdrop beneath the panel. */}
+          <div
+            className="md:hidden fixed inset-0 z-40"
+            aria-hidden="true"
+            onClick={() => setIsOpen(false)}
+          />
+          <div
+            id="mobile-menu-panel"
+            className="md:hidden border-t p-6 flex flex-col gap-4 absolute top-24 md:top-14 left-0 w-full bg-card shadow-lg z-50"
+          >
           {isAdmin && (
             <Link
               href="/dashboard/invite-director"
@@ -110,7 +133,8 @@ export function MobileMenu({ canViewApps, isAdmin, isLoggedIn, chatUnread = 0 }:
               Success Tracking
             </Link>
           )}
-        </div>
+          </div>
+        </>
       )}
     </>
   );

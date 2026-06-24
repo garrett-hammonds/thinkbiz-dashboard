@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { updateUserPassword } from '@/app/update-password/actions';
+import SubmitButton from '@/components/SubmitButton';
 
 export function UpdatePasswordForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -43,9 +44,12 @@ export function UpdatePasswordForm() {
         </button>
       </div>
 
-      <button type="submit" className="w-full bg-primary text-white hover:bg-secondary rounded-lg px-6 py-3 font-semibold transition-colors duration-200">
+      <SubmitButton
+        pendingLabel="Saving…"
+        className="w-full bg-primary text-white hover:bg-secondary rounded-lg px-6 py-3 font-semibold transition-colors duration-200 focus-visible:outline-primary"
+      >
         Save and Continue
-      </button>
+      </SubmitButton>
     </form>
   );
 }

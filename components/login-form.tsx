@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { login } from '@/app/login/actions';
+import SubmitButton from '@/components/SubmitButton';
 import Link from 'next/link';
 
 export function LoginForm() {
@@ -34,12 +35,12 @@ export function LoginForm() {
           {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
         </button>
       </div>
-      <button
-        type="submit"
+      <SubmitButton
+        pendingLabel="Signing in…"
         className="w-full bg-primary text-white hover:bg-secondary rounded-lg px-6 py-3 font-semibold transition-colors duration-200 focus-visible:outline-primary"
       >
         Submit
-      </button>
+      </SubmitButton>
       <div className="text-center mt-2">
         <Link href="/forgot-password" className="text-sm text-primary hover:text-secondary font-medium transition-colors duration-200">
           Forgot password?

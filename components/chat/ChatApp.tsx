@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Hash, Lock, Plus, Compass, ArrowLeft, LogOut, X } from "lucide-react";
+import { Hash, Lock, Plus, Compass, ArrowLeft, LogOut } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { createChannel } from "@/app/actions/chat";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import { Modal } from "@/components/Modal";
 import { MessageList } from "./MessageList";
 import { Composer } from "./Composer";
 import type { ChatChannel, ChatMember, ChatMessage, ChatReaction, Me } from "./types";
@@ -556,36 +557,6 @@ export function ChatApp({ me, initialChannels, directory, initialUnread }: Props
           </form>
         </Modal>
       )}
-    </div>
-  );
-}
-
-function Modal({
-  title,
-  onClose,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-xl border border-gray-100 bg-white p-6 shadow-card"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-xl font-semibold leading-normal text-foreground">{title}</h3>
-          <button onClick={onClose} className="rounded-lg p-1 text-gray-400 hover:bg-muted">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        {children}
-      </div>
     </div>
   );
 }
