@@ -20,7 +20,7 @@ export default function ApproveButton({ applicationId }: { applicationId: string
         }
         router.refresh();
       }
-    } catch (error) {
+    } catch {
       alert('An unexpected error occurred.');
     } finally {
       setIsLoading(false);

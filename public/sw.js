@@ -8,7 +8,7 @@ self.addEventListener('push', (event) => {
   let payload = {};
   try {
     payload = event.data ? event.data.json() : {};
-  } catch (e) {
+  } catch {
     payload = { title: 'ThinkBiz', body: event.data ? event.data.text() : '' };
   }
 
@@ -40,7 +40,7 @@ self.addEventListener('notificationclick', (event) => {
               client.navigate(target.href);
               return client.focus();
             }
-          } catch (e) {
+          } catch {
             // fall through to openWindow
           }
         }

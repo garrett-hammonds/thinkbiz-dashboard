@@ -9,18 +9,11 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-
-interface WeeklyLog {
-  revenue: number;
-  visitors_brought: number;
-  one_on_ones_had: number;
-  referrals_given: number;
-  created_at: string;
-}
+import type { WeeklyLog, RevenueLog, MonthlyChartDatum } from "@/lib/types/metrics";
 
 interface DashboardChartsProps {
   data: WeeklyLog[];
-  revenueData?: any[];
+  revenueData?: RevenueLog[];
 }
 
 const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -29,7 +22,7 @@ interface MetricChartProps {
   title: string;
   dataKey: string;
   color: string;
-  chartData: any[];
+  chartData: MonthlyChartDatum[];
   formatAsCurrency?: boolean;
 }
 
@@ -83,7 +76,7 @@ function MetricChart({ title, dataKey, color, chartData, formatAsCurrency }: Met
 }
 
 export function DashboardCharts({ data, revenueData = [] }: DashboardChartsProps) {
-  const monthlyTotals: Record<string, { date: string; revenue: number; visitors: number; oneOnOnes: number; thanked: number; }> = {};
+  const monthlyTotals: Record<string, MonthlyChartDatum> = {};
   
   monthOrder.forEach((month) => {
     monthlyTotals[month] = { date: month, revenue: 0, visitors: 0, oneOnOnes: 0, thanked: 0 };

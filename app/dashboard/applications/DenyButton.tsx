@@ -19,7 +19,7 @@ export function DenyButton({ applicationId }: { applicationId: string }) {
         setIsModalOpen(false);
         router.refresh();
       }
-    } catch (error) {
+    } catch {
       alert('An unexpected error occurred');
     } finally {
       setIsLoading(false);
