@@ -62,6 +62,23 @@ export function applicationApprovedEmail(opts: { firstName?: string; url: string
   };
 }
 
+export function passwordResetEmail(opts: { firstName?: string; url: string }): RenderedEmail {
+  const name = opts.firstName ? `, ${opts.firstName}` : '';
+  return {
+    subject: `Reset your ${BRAND} password`,
+    html: layout({
+      heading: 'Reset your password',
+      paragraphs: [
+        `Hi${escapeHtml(name)} — we got a request to reset your ${BRAND} password.`,
+        `Click below to choose a new password and sign back in. If you didn't request this, you can safely ignore this email.`,
+      ],
+      ctaLabel: 'Reset your password',
+      ctaUrl: opts.url,
+    }),
+    text: `Reset your ${BRAND} password here: ${opts.url}\n\nIf you didn't request this, you can ignore this email.`,
+  };
+}
+
 export function memberInviteEmail(opts: { firstName?: string; url: string }): RenderedEmail {
   const name = opts.firstName ? `, ${opts.firstName}` : '';
   return {
