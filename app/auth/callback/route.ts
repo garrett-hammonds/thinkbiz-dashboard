@@ -51,7 +51,10 @@ export async function GET(request: Request) {
     const confirmUrl = new URL('/auth/confirm', request.url);
     confirmUrl.searchParams.set('token_hash', tokenHash);
     confirmUrl.searchParams.set('type', type);
-    confirmUrl.searchParams.set('next', safeNext);
+    // Forward `next` untouched (not safeNext) so /auth/confirm can normalize a
+    // double-encoded value from older emails. URLSearchParams re-encodes on
+    // toString(), so a clean "/update-password" stays clean.
+    if (nextParam) confirmUrl.searchParams.set('next', nextParam);
     return NextResponse.redirect(confirmUrl);
   }
 
