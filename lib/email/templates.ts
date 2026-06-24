@@ -53,12 +53,12 @@ export function applicationApprovedEmail(opts: { firstName?: string; url: string
       heading: `Welcome to ${BRAND}!`,
       paragraphs: [
         `Great news${escapeHtml(name)} — your application has been approved.`,
-        `You can now sign in, complete your profile, and start connecting with your club.`,
+        `Click below to set your password and finish setting up your account. The button signs you in, then walks you through choosing a password and completing your profile.`,
       ],
-      ctaLabel: 'Go to your dashboard',
+      ctaLabel: 'Set your password & get started',
       ctaUrl: opts.url,
     }),
-    text: `Welcome to ${BRAND}! Your application has been approved. Sign in to get started: ${opts.url}`,
+    text: `Welcome to ${BRAND}! Your application has been approved. Set your password and finish setting up your account here: ${opts.url}`,
   };
 }
 
@@ -76,6 +76,23 @@ export function memberInviteEmail(opts: { firstName?: string; url: string }): Re
       ctaUrl: opts.url,
     }),
     text: `You're invited to ${BRAND}! Accept your invitation and set up your account here: ${opts.url}`,
+  };
+}
+
+export function newApplicationEmail(opts: { applicantName: string; clubName?: string; url: string }): RenderedEmail {
+  const club = opts.clubName ? ` to ${escapeHtml(opts.clubName)}` : '';
+  return {
+    subject: `New ThinkBiz application: ${opts.applicantName}`,
+    html: layout({
+      heading: 'New membership application',
+      paragraphs: [
+        `<strong>${escapeHtml(opts.applicantName)}</strong> just applied to join${club}.`,
+        `Review their details and approve or deny the application.`,
+      ],
+      ctaLabel: 'Review application',
+      ctaUrl: opts.url,
+    }),
+    text: `${opts.applicantName} just applied to join${opts.clubName ? ` ${opts.clubName}` : ''}. Review it here: ${opts.url}`,
   };
 }
 
