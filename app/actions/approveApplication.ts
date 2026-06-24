@@ -1,7 +1,8 @@
 'use server';
 
-import { createClient as createAdminClient, type SupabaseClient } from '@supabase/supabase-js';
+import { type SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/admin';
 import { dispatchNotifications } from '@/lib/notifications/dispatch';
 import { applicationApprovedEmail } from '@/lib/email/templates';
 
@@ -44,7 +45,7 @@ export async function approveApplication(applicationId: string) {
       return { success: false, message: 'Unauthorized' };
     }
 
-    const supabaseAdmin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const supabaseAdmin = createAdminClient();
 
     const { data: application, error } = await supabaseAdmin
       .from('pending_applications')

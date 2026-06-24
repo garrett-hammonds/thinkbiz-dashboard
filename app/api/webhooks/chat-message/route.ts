@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/supabase/admin';
 import { dispatchNotifications } from '@/lib/notifications/dispatch';
 import { chatMentionEmail } from '@/lib/email/templates';
 
@@ -51,10 +51,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing record' }, { status: 400 });
   }
 
-  const admin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  const admin = createAdminClient();
 
   // Channel (name + club scope) and author name.
   const [{ data: channel }, { data: author }] = await Promise.all([

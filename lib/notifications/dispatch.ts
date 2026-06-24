@@ -1,5 +1,5 @@
 import 'server-only';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/supabase/admin';
 import { sendEmail } from '@/lib/email/client';
 import { sendPush, type StoredSubscription } from '@/lib/notifications/push-server';
 
@@ -39,13 +39,6 @@ const PUSH_COL: Record<NotificationCategory, string> = {
   application: 'push_application',
 };
 
-function adminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
-
 interface PrefRow {
   member_id: string;
   email_enabled: boolean;
@@ -69,7 +62,7 @@ export async function dispatchNotifications(input: DispatchInput): Promise<void>
     const recipientIds = Array.from(new Set(input.recipientMemberIds)).filter(Boolean);
     if (recipientIds.length === 0) return;
 
-    const admin = adminClient();
+    const admin = createAdminClient();
 
     // Members + their prefs (left join via a separate query — keep it simple).
     const [{ data: members }, { data: prefs }] = await Promise.all([
@@ -118,7 +111,7 @@ async function sendEmails(
 }
 
 async function sendPushes(
-  admin: ReturnType<typeof adminClient>,
+  admin: ReturnType<typeof createAdminClient>,
   memberIds: string[],
   push: PushContent,
 ): Promise<void> {
