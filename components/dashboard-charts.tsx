@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { WeeklyLog, RevenueLog, MonthlyChartDatum } from "@/lib/types/metrics";
-import { METRIC_COLORS } from "@/lib/chartColors";
+import { METRIC_COLORS, METRIC_STROKE_COLORS } from "@/lib/chartColors";
 
 interface DashboardChartsProps {
   data: WeeklyLog[];
@@ -59,12 +59,16 @@ const currencyFull = new Intl.NumberFormat("en-US", {
 interface MetricChartProps {
   title: string;
   dataKey: keyof MonthlyChartDatum;
+  // The metric's identity color, used for the translucent area fill so the
+  // chart still reads as its brand color on the scorecards and below the line.
   color: string;
+  // A contrast-safe shade for the thin line/dot marks (see METRIC_STROKE_COLORS).
+  strokeColor: string;
   chartData: MonthlyChartDatum[];
   formatAsCurrency?: boolean;
 }
 
-function MetricChart({ title, dataKey, color, chartData, formatAsCurrency }: MetricChartProps) {
+function MetricChart({ title, dataKey, color, strokeColor, chartData, formatAsCurrency }: MetricChartProps) {
   // Counts get thousands separators too (1,234 — not 1234) so a busy month
   // reads cleanly; currency uses a compact axis ($1.2K) but full value in tip.
   const formatValue = (value: number) =>
@@ -157,11 +161,11 @@ function MetricChart({ title, dataKey, color, chartData, formatAsCurrency }: Met
             <Area
               type="monotone"
               dataKey={dataKey}
-              stroke={color}
+              stroke={strokeColor}
               strokeWidth={2}
               fill={`url(#${gradientId})`}
               dot={false}
-              activeDot={{ r: 4, strokeWidth: 0 }}
+              activeDot={{ r: 4, strokeWidth: 0, fill: strokeColor }}
               isAnimationActive={false}
             />
           </AreaChart>
@@ -209,6 +213,7 @@ export function DashboardCharts({ data, revenueData = [] }: DashboardChartsProps
         title="Revenue by Month"
         dataKey="revenue"
         color={METRIC_COLORS.revenue}
+        strokeColor={METRIC_STROKE_COLORS.revenue}
         chartData={chartData}
         formatAsCurrency
       />
@@ -216,18 +221,21 @@ export function DashboardCharts({ data, revenueData = [] }: DashboardChartsProps
         title="Visitors by Month"
         dataKey="visitors"
         color={METRIC_COLORS.visitors}
+        strokeColor={METRIC_STROKE_COLORS.visitors}
         chartData={chartData}
       />
       <MetricChart
         title="1-on-1s by Month"
         dataKey="oneOnOnes"
         color={METRIC_COLORS.oneOnOnes}
+        strokeColor={METRIC_STROKE_COLORS.oneOnOnes}
         chartData={chartData}
       />
       <MetricChart
         title="Members Thanked by Month"
         dataKey="thanked"
         color={METRIC_COLORS.thanked}
+        strokeColor={METRIC_STROKE_COLORS.thanked}
         chartData={chartData}
       />
     </div>

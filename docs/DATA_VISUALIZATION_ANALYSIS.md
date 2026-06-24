@@ -88,6 +88,24 @@ the charts are keyboard-navigable with the arrow keys. Animation was disabled
 (`isAnimationActive={false}`) to avoid the load-time motion and to keep the
 first paint stable.
 
+### P4 — Two metric marks failed graphical-object contrast (shipped)
+
+Measuring the chart line/dot marks against the white card surface (WCAG 1.4.11
+asks for ≥3:1 for graphical objects) surfaced two failures: the brand **gold**
+(`thanked → #f0c808`) was only **1.62:1** and the bright **teal** (`visitors →
+#21bdc8`) **2.29:1**. A scorecard icon is a chunky glyph on a tinted chip and
+reads fine, but as a thin 2px line on white the gold in particular was barely
+perceivable — the very mark that defines the trend.
+
+**Shipped:** a dedicated `METRIC_STROKE_COLORS` map in `lib/chartColors.ts`. The
+translucent area **fill keeps the identity color** (so each chart still reads as
+its brand color, and the scorecards are untouched), while the thin line and
+active dot use a **deeper, same-hue** shade where needed — gold `#f0c808` →
+`#a07f00` (~3.8:1), teal `#21bdc8` → `#0d96a3` (~3.6:1). Navy (6.35:1) and
+mid-teal (4.19:1) already clear 3:1, so they stroke with their identity color
+unchanged. The metric's identity stays single-sourced; the stroke is an additive,
+contrast-only concern.
+
 ## 3. What shipped in this pass
 
 | Change | Files |
@@ -96,32 +114,29 @@ first paint stable.
 | Dashed **12-month average** reference line (suppressed on all-zero series) | `components/dashboard-charts.tsx` |
 | Count **thousands separators** (axis + tooltip), wider count Y-axis, per-card "N total" caption | `components/dashboard-charts.tsx` |
 | Chart **accessibility**: `role="img"` + summarizing `aria-label`, `accessibilityLayer`, animation off | `components/dashboard-charts.tsx` |
+| Contrast-safe **stroke palette** (`METRIC_STROKE_COLORS`) for the gold/teal line marks; identity fills unchanged | `lib/chartColors.ts`, `components/dashboard-charts.tsx` |
 
-All changes are confined to the chart component — no schema, query, palette, or
-component-contract changes, and the shared `METRIC_COLORS` from the Visual Design
-pass is reused unchanged so a metric's color still agrees across scorecards and
-charts. `npm run lint` is clean (0 errors; the 3 pre-existing `<img>` warnings
-are untouched) and `npm run build` succeeds.
+All changes are confined to the chart component and chart palette — no schema,
+query, or component-contract changes. The shared `METRIC_COLORS` from the Visual
+Design pass is reused **unchanged** as each metric's identity (scorecards + area
+fills); the new stroke palette only deepens the thin line marks that failed
+contrast, so a metric's color still agrees across scorecards and charts. `npm run
+lint` is clean (0 errors; the 3 pre-existing `<img>` warnings are untouched) and
+`npm run build` succeeds.
 
 ## 4. Backlog (recommended next, by priority)
 
-1. **Gold as a data mark fails contrast.** `thanked → #f0c808` works as an icon
-   accent on a tinted scorecard chip, but as a thin 2px line on white the gold
-   stroke is ~1.4:1 — below perceivable. The area fill, "N total" caption, and
-   average line keep the chart legible, but a dedicated, slightly deeper
-   *chart-stroke* shade for gold (distinct from the identity color) would make
-   the line itself readable without touching the scorecard accent.
-2. **Time granularity control.** The window is hard-coded to 12 months. A
+1. **Time granularity control.** The window is hard-coded to 12 months. A
    simple range toggle (3 / 6 / 12 months, or "all time") would let members zoom
    the trend; pairs naturally with the `dashboard_metrics()` RPC the Data
    Engineering pass proposed (return the series already bucketed).
-3. **Month-over-month delta on the scorecards.** The all-time totals don't show
+2. **Month-over-month delta on the scorecards.** The all-time totals don't show
    direction. A small "▲ +12% vs last month" under each scorecard would connect
    the totals to the trend charts and give the top of the dashboard a verdict.
-4. **Show the "this month is partial" caveat.** The trailing window's last point
+3. **Show the "this month is partial" caveat.** The trailing window's last point
    is the current, incomplete month, so it almost always dips below the average —
    which reads as a decline. Marking the final point as in-progress (lighter
    fill / "MTD" annotation) would stop that false-negative read.
-5. **Empty-vs-missing in club view.** A club with no logs yet renders four flat
+4. **Empty-vs-missing in club view.** A club with no logs yet renders four flat
    lines on the axis. A small "No club activity logged yet" overlay (mirroring
    the personal empty state) would be clearer than four empty axes.

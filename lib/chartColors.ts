@@ -18,3 +18,19 @@ export const METRIC_COLORS = {
   oneOnOnes: '#13889a',
   thanked: '#f0c808',
 } as const;
+
+// Stroke colors for the chart line/area marks. A scorecard icon is a chunky
+// glyph on a tinted chip, but a chart line is a thin 2px mark on a white card —
+// to read as a data mark it must clear ~3:1 non-text contrast (WCAG 1.4.11)
+// against that white. Two of the identity colors fail as thin marks: the brand
+// gold (#f0c808) is only ~1.6:1 and the bright teal (#21bdc8) ~2.3:1. Their
+// strokes use a deeper, same-hue shade (gold ~3.8:1, teal ~3.6:1) while the
+// translucent area FILL keeps the identity color — so each chart still reads as
+// its brand color, but the line that actually defines the trend is legible.
+// Navy and mid-teal already clear 3:1, so they stroke with their identity color.
+export const METRIC_STROKE_COLORS = {
+  revenue: METRIC_COLORS.revenue,
+  visitors: '#0d96a3',
+  oneOnOnes: METRIC_COLORS.oneOnOnes,
+  thanked: '#a07f00',
+} as const;
