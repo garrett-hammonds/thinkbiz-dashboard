@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { getMemberForUser } from '@/utils/supabase/getMember';
+import { membershipGateRedirect } from '@/utils/membership';
 
 import { Navbar } from "@/components/navbar";
 import { Scorecards } from "@/components/scorecards";
@@ -31,6 +32,11 @@ export default async function DashboardPage({
 
   if (!memberData.profile_completed_at) {
     redirect('/onboarding');
+  }
+
+  const gate = membershipGateRedirect(memberData);
+  if (gate) {
+    redirect(gate);
   }
 
   const member = memberData;

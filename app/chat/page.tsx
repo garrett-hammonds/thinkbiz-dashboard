@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { getMemberForUser } from '@/utils/supabase/getMember';
+import { membershipGateRedirect } from '@/utils/membership';
 import { getChatDirectory } from '@/utils/supabase/directory';
 
 import { Navbar } from '@/components/navbar';
@@ -23,6 +24,11 @@ export default async function ChatPage() {
 
   if (!member.profile_completed_at) {
     redirect('/onboarding');
+  }
+
+  const gate = membershipGateRedirect(member);
+  if (gate) {
+    redirect(gate);
   }
 
   const [

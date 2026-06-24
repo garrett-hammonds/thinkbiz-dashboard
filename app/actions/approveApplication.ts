@@ -1,9 +1,11 @@
 'use server';
 
+import { type SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { findAuthUserByEmail } from '@/utils/supabase/authUsers';
 import { dispatchNotifications } from '@/lib/notifications/dispatch';
+import { sendEmail } from '@/lib/email/client';
 import { applicationApprovedEmail } from '@/lib/email/templates';
 
 function isUserAlreadyExistsError(err: { message?: string; code?: string } | null): boolean {
@@ -15,6 +17,54 @@ function isUserAlreadyExistsError(err: { message?: string; code?: string } | nul
     msg.includes('already exists') ||
     msg.includes('user already')
   );
+}
+
+// Produces the link a newly-approved member clicks to GET INTO the app for the
+// first time. The link signs them in and drops them on /update-password so they
+// can set a password — this is the piece that was missing before (the approval
+// email pointed at /dashboard, which just bounced a passwordless member to
+// /login with no way forward).
+//
+// We generate the link ourselves (rather than letting Supabase send its own
+// invite email) so it can ride inside our branded approval email as the button.
+// New auth users are created via an 'invite' link; members who already have an
+// auth account get a 'magiclink' instead (invite would reject them).
+async function generateOnboardingLink(
+  admin: SupabaseClient,
+  email: string,
+  redirectTo: string,
+): Promise<{ userId: string; actionLink: string } | { error: string }> {
+  const invite = await admin.auth.admin.generateLink({
+    type: 'invite',
+    email,
+    options: { redirectTo },
+  });
+
+  if (!invite.error && invite.data?.user && invite.data.properties?.action_link) {
+    return { userId: invite.data.user.id, actionLink: invite.data.properties.action_link };
+  }
+
+  if (invite.error && !isUserAlreadyExistsError(invite.error)) {
+    console.error('[approveApplication] generateLink(invite) failed:', invite.error);
+    return { error: invite.error.message || 'Failed to create sign-in link.' };
+  }
+
+  // Auth user already exists → mint a magic link to the same destination.
+  const magic = await admin.auth.admin.generateLink({
+    type: 'magiclink',
+    email,
+    options: { redirectTo },
+  });
+
+  const actionLink = magic.data?.properties?.action_link;
+  const userId = magic.data?.user?.id ?? (await findAuthUserByEmail(admin, email))?.id;
+
+  if (magic.error || !actionLink || !userId) {
+    console.error('[approveApplication] generateLink(magiclink) failed:', magic.error);
+    return { error: magic.error?.message || 'Failed to create sign-in link.' };
+  }
+
+  return { userId, actionLink };
 }
 
 export async function approveApplication(applicationId: string) {
@@ -39,39 +89,14 @@ export async function approveApplication(applicationId: string) {
       return { success: false, message: 'Application not found or already approved.' };
     }
 
-    let newUserId: string;
-    let emailSent = true;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    const redirectTo = `${siteUrl}/auth/callback?next=/update-password`;
 
-    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-      application.email,
-      { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/update-password` }
-    );
-
-    if (inviteError && isUserAlreadyExistsError(inviteError)) {
-      const existingAuthUser = await findAuthUserByEmail(supabaseAdmin, application.email);
-      if (!existingAuthUser) {
-        console.error(
-          '[approveApplication] auth user reported as existing but lookup failed:',
-          inviteError,
-        );
-        return {
-          success: false,
-          message: 'An account exists for this email but we could not look it up. Contact ThinkBiz Support.',
-        };
-      }
-      newUserId = existingAuthUser.id;
-      emailSent = false;
-    } else if (inviteError || !inviteData?.user) {
-      console.error('[approveApplication] inviteUserByEmail failed:', inviteError);
-      return {
-        success: false,
-        message: inviteError?.message
-          ? `Failed to invite user: ${inviteError.message}`
-          : 'Failed to invite user.',
-      };
-    } else {
-      newUserId = inviteData.user.id;
+    const linkResult = await generateOnboardingLink(supabaseAdmin, application.email, redirectTo);
+    if ('error' in linkResult) {
+      return { success: false, message: `Failed to invite user: ${linkResult.error}` };
     }
+    const { userId: newUserId, actionLink } = linkResult;
 
     const memberData = {
       auth_user_id: newUserId,
@@ -131,14 +156,20 @@ export async function approveApplication(applicationId: string) {
       return { success: false, message: 'Failed to update application status.' };
     }
 
-    // Best-effort "you're approved" notification (separate from the Supabase
-    // auth invite email above). Never let a notification failure fail approval.
+    // The welcome email IS the member's way into the app: its button is the
+    // sign-in link generated above, which lands them on /update-password to set
+    // a password. Send it directly (transactional) so it can't be suppressed by
+    // notification preferences — without it, an approved member has no way in.
+    const welcome = applicationApprovedEmail({
+      firstName: application.first_name,
+      url: actionLink,
+    });
+    const emailSent = await sendEmail({ to: application.email, ...welcome });
+
+    // Best-effort push too (a no-op for brand-new members who haven't subscribed
+    // a device yet, but covers re-approval of an existing member). Never let a
+    // notification failure fail approval.
     if (memberId) {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-      const email = applicationApprovedEmail({
-        firstName: application.first_name,
-        url: `${siteUrl}/dashboard`,
-      });
       await dispatchNotifications({
         category: 'application',
         recipientMemberIds: [memberId],
@@ -148,7 +179,6 @@ export async function approveApplication(applicationId: string) {
           url: `${siteUrl}/dashboard`,
           tag: 'application-approved',
         },
-        email,
       });
     }
 
@@ -156,7 +186,7 @@ export async function approveApplication(applicationId: string) {
       success: true,
       message: emailSent
         ? undefined
-        : 'Approved. This email already had a ThinkBiz account, so no invite email was sent — they can sign in with their existing password.',
+        : "Approved, but the welcome email couldn't be sent. Use \"Resend invite\" on the roster so they get their sign-in link.",
     };
   } catch (err) {
     console.error('Error approving application:', err);
