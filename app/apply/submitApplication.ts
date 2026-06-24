@@ -40,7 +40,10 @@ export async function submitApplicationAction(formData: ApplicationFormData) {
 
     if (error) {
         if (error.code === '23505') {
-            return { success: false, message: 'An application with this email already exists.' };
+            return {
+                success: false,
+                message: "An application with this email is already on file. If you're already a ThinkBiz member, head to the login page and use \"Forgot password\" to get back in.",
+            };
         }
         console.error('Error inserting application:', error);
         return { success: false, message: 'Failed to submit application.' };
