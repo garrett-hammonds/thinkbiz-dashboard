@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { createClient as createAdminClient, type SupabaseClient } from '@supabase/supabase-js';
 import { getMemberForUser } from '@/utils/supabase/getMember';
+import { buildOnboardingLink } from '@/utils/supabase/authLinks';
 import { sendEmail } from '@/lib/email/client';
 import { memberInviteEmail } from '@/lib/email/templates';
 
@@ -11,21 +12,11 @@ export interface ResendInviteResult {
   message?: string;
 }
 
-function isUserAlreadyExistsError(err: { message?: string; code?: string } | null): boolean {
-  if (!err) return false;
-  if (err.code === 'email_exists' || err.code === 'user_already_exists') return true;
-  const msg = (err.message || '').toLowerCase();
-  return (
-    msg.includes('already registered') ||
-    msg.includes('already exists') ||
-    msg.includes('user already')
-  );
-}
-
-// Re-sends an app invitation to a member who hasn't joined yet. Most invited
-// members already have an auth user (created when their application was
-// approved), so Supabase's inviteUserByEmail would reject them — in that case
-// we mint a fresh magic link and email it ourselves with our branded template.
+// Re-sends an app invitation to a member who hasn't joined yet. We mint a fresh
+// sign-in link (invite for brand-new auth users, magic link for ones that
+// already exist) and email it with our branded template. The link is a
+// token_hash pointing at /auth/callback, so it works across devices — see
+// utils/supabase/authLinks.ts.
 export async function resendInvite(memberId: string): Promise<ResendInviteResult> {
   const trimmedId = (memberId || '').trim();
   if (!trimmedId) {
@@ -73,47 +64,16 @@ export async function resendInvite(memberId: string): Promise<ResendInviteResult
     return { success: false, message: 'This member has no email on file.' };
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-  const redirectTo = `${baseUrl}/auth/callback?next=/update-password`;
-
-  // Brand-new auth user (e.g. legacy member with no auth account): let Supabase
-  // create the user and send its invite email, mirroring the approval flow.
-  const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(
-    target.email,
-    { redirectTo },
-  );
-
-  if (!inviteError) {
-    return { success: true };
-  }
-
-  if (!isUserAlreadyExistsError(inviteError)) {
-    console.error('[resendInvite] inviteUserByEmail failed:', inviteError);
-    return {
-      success: false,
-      message: inviteError.message
-        ? `Could not send invite: ${inviteError.message}`
-        : 'Could not send invite. Try again.',
-    };
-  }
-
-  // Auth user already exists but hasn't joined — mint a fresh sign-in link and
-  // email it with our own template (Supabase won't re-send its invite email).
-  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-    type: 'magiclink',
-    email: target.email,
-    options: { redirectTo },
-  });
-
-  const actionLink = linkData?.properties?.action_link;
-  if (linkError || !actionLink) {
-    console.error('[resendInvite] generateLink failed:', linkError);
+  // Mint a fresh sign-in link (invite for a brand-new auth user, magic link for
+  // one that already exists) and email it with our branded template.
+  const link = await buildOnboardingLink(admin, target.email, '/update-password');
+  if (!link) {
     return { success: false, message: 'Could not generate an invite link. Try again.' };
   }
 
   const email = memberInviteEmail({
     firstName: target.first_name ?? undefined,
-    url: actionLink,
+    url: link.url,
   });
 
   const sent = await sendEmail({ to: target.email, ...email });

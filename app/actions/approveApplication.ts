@@ -1,71 +1,11 @@
 'use server';
 
-import { type SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
-import { findAuthUserByEmail } from '@/utils/supabase/authUsers';
+import { buildOnboardingLink } from '@/utils/supabase/authLinks';
 import { dispatchNotifications } from '@/lib/notifications/dispatch';
 import { sendEmail } from '@/lib/email/client';
 import { applicationApprovedEmail } from '@/lib/email/templates';
-
-function isUserAlreadyExistsError(err: { message?: string; code?: string } | null): boolean {
-  if (!err) return false;
-  if (err.code === 'email_exists' || err.code === 'user_already_exists') return true;
-  const msg = (err.message || '').toLowerCase();
-  return (
-    msg.includes('already registered') ||
-    msg.includes('already exists') ||
-    msg.includes('user already')
-  );
-}
-
-// Produces the link a newly-approved member clicks to GET INTO the app for the
-// first time. The link signs them in and drops them on /update-password so they
-// can set a password — this is the piece that was missing before (the approval
-// email pointed at /dashboard, which just bounced a passwordless member to
-// /login with no way forward).
-//
-// We generate the link ourselves (rather than letting Supabase send its own
-// invite email) so it can ride inside our branded approval email as the button.
-// New auth users are created via an 'invite' link; members who already have an
-// auth account get a 'magiclink' instead (invite would reject them).
-async function generateOnboardingLink(
-  admin: SupabaseClient,
-  email: string,
-  redirectTo: string,
-): Promise<{ userId: string; actionLink: string } | { error: string }> {
-  const invite = await admin.auth.admin.generateLink({
-    type: 'invite',
-    email,
-    options: { redirectTo },
-  });
-
-  if (!invite.error && invite.data?.user && invite.data.properties?.action_link) {
-    return { userId: invite.data.user.id, actionLink: invite.data.properties.action_link };
-  }
-
-  if (invite.error && !isUserAlreadyExistsError(invite.error)) {
-    console.error('[approveApplication] generateLink(invite) failed:', invite.error);
-    return { error: invite.error.message || 'Failed to create sign-in link.' };
-  }
-
-  // Auth user already exists → mint a magic link to the same destination.
-  const magic = await admin.auth.admin.generateLink({
-    type: 'magiclink',
-    email,
-    options: { redirectTo },
-  });
-
-  const actionLink = magic.data?.properties?.action_link;
-  const userId = magic.data?.user?.id ?? (await findAuthUserByEmail(admin, email))?.id;
-
-  if (magic.error || !actionLink || !userId) {
-    console.error('[approveApplication] generateLink(magiclink) failed:', magic.error);
-    return { error: magic.error?.message || 'Failed to create sign-in link.' };
-  }
-
-  return { userId, actionLink };
-}
 
 export async function approveApplication(applicationId: string) {
   try {
@@ -90,13 +30,12 @@ export async function approveApplication(applicationId: string) {
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-    const redirectTo = `${siteUrl}/auth/callback?next=/update-password`;
 
-    const linkResult = await generateOnboardingLink(supabaseAdmin, application.email, redirectTo);
-    if ('error' in linkResult) {
-      return { success: false, message: `Failed to invite user: ${linkResult.error}` };
+    const linkResult = await buildOnboardingLink(supabaseAdmin, application.email, '/update-password');
+    if (!linkResult) {
+      return { success: false, message: 'Failed to create the member sign-in link. Please try again.' };
     }
-    const { userId: newUserId, actionLink } = linkResult;
+    const { userId: newUserId, url: actionLink } = linkResult;
 
     const memberData = {
       auth_user_id: newUserId,
