@@ -13,6 +13,44 @@ export interface VisitorFormData {
   notes: string;
 }
 
+// Formspree endpoint for the check-in form. Overridable via env so the
+// endpoint can change without a code deploy; falls back to the live form.
+const FORMSPREE_ENDPOINT =
+  process.env.FORMSPREE_VISITOR_ENDPOINT || 'https://formspree.io/f/mgojolqz';
+
+// Best-effort copy of the submission to Formspree (gives the club an email
+// trail + the Formspree dashboard). Never let a Formspree failure fail the
+// check-in — Supabase is the source of truth the app reads from, and
+// Formspree's free tier is rate-limited. Mirrors the best-effort director
+// notification in app/apply/submitApplication.ts.
+async function forwardToFormspree(
+  formData: VisitorFormData,
+  clubName: string | null,
+): Promise<void> {
+  if (!FORMSPREE_ENDPOINT) return;
+
+  await fetch(FORMSPREE_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      // `_subject` and `email` are special fields Formspree understands:
+      // they set the notification subject and reply-to address.
+      _subject: `New visitor check-in${clubName ? ` — ${clubName}` : ''}`,
+      email: formData.email.trim() || undefined,
+      club: clubName || formData.clubId,
+      firstName: formData.firstName.trim(),
+      lastName: formData.lastName.trim() || undefined,
+      phone: formData.phone.trim() || undefined,
+      company: formData.companyName.trim() || undefined,
+      title: formData.title.trim() || undefined,
+      notes: formData.notes.trim() || undefined,
+    }),
+  });
+}
+
 export async function submitVisitorAction(formData: VisitorFormData) {
   if (!formData || !formData.clubId || !formData.firstName.trim()) {
     return { success: false, message: 'Please enter your name.' };
@@ -59,6 +97,21 @@ export async function submitVisitorAction(formData: VisitorFormData) {
     }
     console.error('Error inserting visitor:', error);
     return { success: false, message: 'Something went wrong. Please try again.' };
+  }
+
+  // Best-effort: also forward the entry to Formspree so the club gets an email
+  // + dashboard copy. The Supabase row above is the record of truth, so a
+  // Formspree failure must never block a successful check-in.
+  try {
+    const { data: club } = await supabase
+      .from('clubs')
+      .select('name, display_name')
+      .eq('id', formData.clubId)
+      .maybeSingle();
+    const clubName = club?.display_name || club?.name || null;
+    await forwardToFormspree(formData, clubName);
+  } catch (formspreeError) {
+    console.error('[submitVisitor] Formspree forward failed:', formspreeError);
   }
 
   return { success: true };

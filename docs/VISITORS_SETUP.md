@@ -13,15 +13,23 @@ functions, and the RLS policies.
 
 ## 2. Environment
 
-No new variables. The QR page uses the existing `NEXT_PUBLIC_SITE_URL` to build
-the public check-in URL, so make sure it's set to the live site (e.g.
+The QR page uses the existing `NEXT_PUBLIC_SITE_URL` to build the public
+check-in URL, so make sure it's set to the live site (e.g.
 `https://app.thinkbiz.solutions`) in production.
+
+One **optional** variable: `FORMSPREE_VISITOR_ENDPOINT`. The form always writes
+to the Supabase `visitors` table; when this is set it *also* forwards each entry
+to Formspree for an email/dashboard copy. It defaults to the live Formspree form
+(`https://formspree.io/f/mgojolqz`) when unset, so set it only to repoint it.
 
 ## 3. How it works
 
 - **Public check-in form:** `/visit/<clubId>` — no login required. Visitors
   submit name + email/phone (and optional company, title, notes). Rows are
-  inserted with `source = 'meeting'` via the anon Supabase role.
+  inserted into the `visitors` table with `source = 'meeting'` via the anon
+  Supabase role — this is the record of truth the app reads from. Each entry is
+  then forwarded to Formspree on a **best-effort** basis (an email/dashboard
+  copy); a Formspree failure never blocks a successful check-in.
 - **QR code for slides:** directors/admins open `/dashboard/visitors/qr` to get
   a printable/downloadable QR code that points at their club's `/visit/<clubId>`
   URL. Put it on your meeting slides.
