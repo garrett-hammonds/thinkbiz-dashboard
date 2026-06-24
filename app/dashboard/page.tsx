@@ -6,9 +6,15 @@ import { Navbar } from "@/components/navbar";
 import { Scorecards } from "@/components/scorecards";
 import { DashboardCharts } from "@/components/dashboard-charts";
 import GettingStartedBanner from "@/components/GettingStartedBanner";
+import FlashMessage from "@/components/FlashMessage";
 import type { WeeklyLog, RevenueLog } from "@/lib/types/metrics";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ message?: string }>;
+}) {
+  const { message } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -28,9 +34,13 @@ export default async function DashboardPage() {
 
   const member = memberData;
 
+  // Only the columns the scorecards and charts actually read — avoids shipping
+  // every weekly_logs column (ids, referrals_given, etc.) over the wire.
+  const LOG_COLUMNS = 'visitors_brought, one_on_ones_had, week_ending, created_at';
+
   const logsPromise = supabase
     .from('weekly_logs')
-    .select('*')
+    .select(LOG_COLUMNS)
     .eq('member_id', member.id);
 
   const revenuePromise = supabase
@@ -63,7 +73,7 @@ export default async function DashboardPage() {
 
     const clubLogsPromise = supabase
     .from('weekly_logs')
-    .select('*')
+    .select(LOG_COLUMNS)
     .eq('club_id', member.current_club_id);
 
     const clubRevenuePromise = supabase
@@ -93,6 +103,8 @@ export default async function DashboardPage() {
           </p>
         </div>
 
+        <FlashMessage message={message} />
+
         <GettingStartedBanner hasLoggedSuccess={logs.length > 0} />
 
         <section aria-label="Key metrics" className="mb-8">
@@ -100,6 +112,9 @@ export default async function DashboardPage() {
         </section>
 
         <section aria-label="Monthly trends" className="mb-8">
+          <h2 className="mb-4 text-sm font-semibold text-muted-foreground">
+            Monthly trends · last 12 months
+          </h2>
           <DashboardCharts data={logs} revenueData={revenue} />
         </section>
 
