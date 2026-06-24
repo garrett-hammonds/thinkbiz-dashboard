@@ -31,7 +31,7 @@ export async function denyApplication(applicationId: string) {
     }
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err) {
     console.error('Error denying application:', err);
     return { success: false, message: 'An unexpected error occurred' };
   }

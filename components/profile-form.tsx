@@ -6,7 +6,18 @@ import imageCompression from 'browser-image-compression';
 import { createClient } from '@/utils/supabase/client';
 import NotificationSettings, { type NotificationPrefs } from '@/components/NotificationSettings';
 
-export default function ProfileForm({ member, prefs }: { member: any; prefs: NotificationPrefs }) {
+export interface ProfileMember {
+  member_headshot?: string | null;
+  company_name?: string | null;
+  title?: string | null;
+  website_url?: string | null;
+  linkedin_url?: string | null;
+  booking_calendar_url?: string | null;
+  core_skills?: string[] | null;
+  bio?: string | null;
+}
+
+export default function ProfileForm({ member, prefs }: { member: ProfileMember; prefs: NotificationPrefs }) {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -30,15 +41,15 @@ export default function ProfileForm({ member, prefs }: { member: any; prefs: Not
       
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase.storage.from('Member Images').upload(`${user.id}/headshot.webp`, compressedFile, { upsert: true });
-      
+      const { error } = await supabase.storage.from('Member Images').upload(`${user.id}/headshot.webp`, compressedFile, { upsert: true });
+
       if (error) throw error;
 
       const { data: { publicUrl } } = supabase.storage.from('Member Images').getPublicUrl(`${user.id}/headshot.webp`);
-      
+
       setPreviewUrl(`${publicUrl}?t=${Date.now()}`);
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'Failed to upload image.' });
+    } catch (err) {
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to upload image.' });
     } finally {
       setUploadingImage(false);
     }
@@ -57,8 +68,8 @@ export default function ProfileForm({ member, prefs }: { member: any; prefs: Not
         } else {
           setMessage({ type: 'error', text: result.message || 'Failed to update profile.' });
         }
-      } catch (err: any) {
-        setMessage({ type: 'error', text: err.message || 'An unexpected error occurred.' });
+      } catch (err) {
+        setMessage({ type: 'error', text: err instanceof Error ? err.message : 'An unexpected error occurred.' });
       }
     });
   };

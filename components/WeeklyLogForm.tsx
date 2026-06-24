@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { submitLogAction } from '@/app/actions/submitLog';
+import type { DirectoryMember } from '@/utils/supabase/directory';
 
-export function WeeklyLogForm({ directory }: { directory: any[] }) {
+export function WeeklyLogForm({ directory }: { directory: DirectoryMember[] }) {
   const [weekEnding, setWeekEnding] = useState('');
   const [visitorsBrought, setVisitorsBrought] = useState(0);
   const [oneOnOnesHad, setOneOnOnesHad] = useState(0);

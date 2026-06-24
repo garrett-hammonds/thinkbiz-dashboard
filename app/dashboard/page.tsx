@@ -6,6 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { Scorecards } from "@/components/scorecards";
 import { DashboardCharts } from "@/components/dashboard-charts";
 import GettingStartedBanner from "@/components/GettingStartedBanner";
+import type { WeeklyLog, RevenueLog } from "@/lib/types/metrics";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -42,12 +43,12 @@ export default async function DashboardPage() {
     revenuePromise
   ]);
 
-  const logs = logsData || [];
-  const revenue = (revenueData as any[]) || [];
+  const logs = (logsData ?? []) as WeeklyLog[];
+  const revenue = (revenueData ?? []) as RevenueLog[];
 
   let clubName = '';
-  let clubLogs: any[] = [];
-  let clubRevenue: any[] = [];
+  let clubLogs: WeeklyLog[] = [];
+  let clubRevenue: RevenueLog[] = [];
 
   if (member?.current_club_id) {
     const { data: clubData } = await supabase

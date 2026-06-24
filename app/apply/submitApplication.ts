@@ -2,7 +2,19 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-export async function submitApplicationAction(formData: any) {
+export interface ApplicationFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  clubId: string;
+  companyName: string;
+  title: string;
+  bio: string;
+  coreSkills: string;
+}
+
+export async function submitApplicationAction(formData: ApplicationFormData) {
     if (!formData || !formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.clubId || !formData.companyName || !formData.title || !formData.bio || !formData.coreSkills) {
         return { success: false, message: 'Invalid submission: Missing required fields.' };
     }
@@ -12,7 +24,7 @@ export async function submitApplicationAction(formData: any) {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    const { data, error } = await supabase
+    const { error } = await supabase
         .from('pending_applications')
         .insert([{
             first_name: formData.firstName,

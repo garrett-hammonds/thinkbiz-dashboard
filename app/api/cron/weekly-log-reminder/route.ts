@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/supabase/admin';
 import { dispatchNotifications } from '@/lib/notifications/dispatch';
 import { weeklyLogReminderEmail } from '@/lib/email/templates';
 
 export const dynamic = 'force-dynamic';
+// Fans reminders out to every active member who hasn't logged. Give the
+// function headroom beyond the default so a larger roster can't time out.
+export const maxDuration = 60;
 
 // Scheduled by Vercel Cron (see vercel.json). Notifies active members who have
 // not submitted a weekly log in the last 7 days.
@@ -18,10 +21,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const admin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  const admin = createAdminClient();
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);

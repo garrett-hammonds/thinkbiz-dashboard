@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient as createAdminClient, type SupabaseClient } from '@supabase/supabase-js';
+import { type SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/admin';
 import { getMemberForUser } from '@/utils/supabase/getMember';
 import { sendPushDiagnostic } from '@/lib/notifications/push-server';
 
@@ -49,10 +50,7 @@ export async function GET() {
   };
 
   // Read this member's subscriptions with the service-role client.
-  const admin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  const admin = createAdminClient();
   const { data: subs } = await admin
     .from('push_subscriptions')
     .select('id, endpoint, p256dh, auth, user_agent')

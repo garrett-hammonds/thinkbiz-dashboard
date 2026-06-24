@@ -1,8 +1,8 @@
 'use server';
 
-import { createServerClient } from '@supabase/ssr';
-import { createClient as createAdminClient, type SupabaseClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
+import { type SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/admin';
 import { dispatchNotifications } from '@/lib/notifications/dispatch';
 import { applicationApprovedEmail } from '@/lib/email/templates';
 
@@ -37,33 +37,7 @@ function isUserAlreadyExistsError(err: { message?: string; code?: string } | nul
 
 export async function approveApplication(applicationId: string) {
   try {
-    const cookieStore = await cookies();
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-          set(name: string, value: string, options: any) {
-            try {
-              cookieStore.set({ name, value, ...options });
-            } catch (error) {
-              // Handle error
-            }
-          },
-          remove(name: string, options: any) {
-            try {
-              cookieStore.set({ name, value: '', ...options });
-            } catch (error) {
-              // Handle error
-            }
-          },
-        },
-      }
-    );
+    const supabase = await createClient();
 
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -71,7 +45,7 @@ export async function approveApplication(applicationId: string) {
       return { success: false, message: 'Unauthorized' };
     }
 
-    const supabaseAdmin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const supabaseAdmin = createAdminClient();
 
     const { data: application, error } = await supabaseAdmin
       .from('pending_applications')
@@ -202,7 +176,7 @@ export async function approveApplication(applicationId: string) {
         ? undefined
         : 'Approved. This email already had a ThinkBiz account, so no invite email was sent — they can sign in with their existing password.',
     };
-  } catch (err: any) {
+  } catch (err) {
     console.error('Error approving application:', err);
     return { success: false, message: 'An unexpected error occurred.' };
   }
