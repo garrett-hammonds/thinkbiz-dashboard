@@ -15,12 +15,15 @@ export async function updateUserPassword(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  // getUser() validates the token with Supabase, unlike getSession() which just
+  // reads the cookie. If the recovery/invite link didn't establish a session
+  // (expired or already used), send them to "Forgot password" to self-serve.
+  const { data: { user } } = await supabase.auth.getUser();
 
-  if (!session) {
-    redirect('/login?message=Session expired. Please request a new invite link.');
+  if (!user) {
+    redirect('/login?message=Your link expired before you set a password. Use "Forgot password" to get a fresh one.');
   }
-  
+
   const { error } = await supabase.auth.updateUser({ password });
 
   if (error) {

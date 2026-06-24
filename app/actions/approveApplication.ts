@@ -1,28 +1,10 @@
 'use server';
 
-import { type SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
+import { findAuthUserByEmail } from '@/utils/supabase/authUsers';
 import { dispatchNotifications } from '@/lib/notifications/dispatch';
 import { applicationApprovedEmail } from '@/lib/email/templates';
-
-async function findAuthUserByEmail(
-  admin: SupabaseClient,
-  email: string,
-): Promise<{ id: string } | null> {
-  const target = email.toLowerCase();
-  let page = 1;
-  const perPage = 1000;
-  while (true) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-    if (error || !data?.users) return null;
-    const found = data.users.find((u) => u.email?.toLowerCase() === target);
-    if (found) return { id: found.id };
-    if (data.users.length < perPage) return null;
-    page += 1;
-    if (page > 50) return null;
-  }
-}
 
 function isUserAlreadyExistsError(err: { message?: string; code?: string } | null): boolean {
   if (!err) return false;
