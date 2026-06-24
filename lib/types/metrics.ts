@@ -6,6 +6,9 @@ export interface WeeklyLog {
   visitors_brought: number;
   one_on_ones_had: number;
   referrals_given: number;
+  // The week the activity happened (date the member selected). Preferred over
+  // created_at for time-bucketing so a late submission lands in the right week.
+  week_ending?: string | null;
   created_at: string;
 }
 

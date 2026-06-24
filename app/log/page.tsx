@@ -1,11 +1,17 @@
 import { redirect } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { WeeklyLogForm } from "@/components/WeeklyLogForm";
+import FlashMessage from "@/components/FlashMessage";
 import { createClient } from "@/utils/supabase/server";
 import { getMemberForUser } from "@/utils/supabase/getMember";
 import { getClubDirectory } from "@/utils/supabase/directory";
 
-export default async function LogPage() {
+export default async function LogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ message?: string }>;
+}) {
+  const { message } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -30,6 +36,7 @@ export default async function LogPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+        <FlashMessage message={message} />
         <WeeklyLogForm directory={members} />
       </main>
     </div>
