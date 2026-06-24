@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/server';
 import { getMemberForUser } from '@/utils/supabase/getMember';
 import { logout } from '@/app/actions/profile';
 import { isBillingEnabled } from '@/lib/stripe/client';
+import { reconcileMemberSubscription } from '@/lib/stripe/reconcile';
 import { isMemberPaid } from '@/utils/membership';
 import { Navbar } from '@/components/navbar';
 import CheckoutButton from './CheckoutButton';
@@ -32,6 +33,14 @@ export default async function BillingPage({
 
   // Already paid, or billing isn't configured — there's nothing to pay for here.
   if (isMemberPaid(member) || !isBillingEnabled()) {
+    redirect('/dashboard');
+  }
+
+  // Before showing the paywall, check whether this member is ALREADY subscribed
+  // in Stripe (e.g. a pre-existing GoHighLevel subscription on the same account)
+  // and just isn't linked yet. If so, link it and let them straight in — no one
+  // who's already paying should ever be asked to pay again.
+  if (await reconcileMemberSubscription(member)) {
     redirect('/dashboard');
   }
 
