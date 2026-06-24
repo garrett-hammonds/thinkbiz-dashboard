@@ -1,12 +1,13 @@
 "use client";
 
 import {
-  BarChart,
-  Bar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
+  ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
 import type { WeeklyLog, RevenueLog, MonthlyChartDatum } from "@/lib/types/metrics";
@@ -28,7 +29,7 @@ function monthKey(year: number, month: number) {
 // Builds an ordered list of the trailing `WINDOW_MONTHS` calendar months ending
 // with the current month. Pre-seeding these guarantees the chart shows a fixed,
 // chronological window (e.g. Jul '25 → Jun '26) rather than a bare Jan–Dec axis
-// that silently merges data from different years into the same bar.
+// that silently merges data from different years into the same point.
 function buildWindow(now: Date): MonthlyChartDatum[] {
   const months: MonthlyChartDatum[] = [];
   for (let i = WINDOW_MONTHS - 1; i >= 0; i--) {
@@ -42,37 +43,90 @@ function buildWindow(now: Date): MonthlyChartDatum[] {
   return months;
 }
 
+const currencyCompact = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  compactDisplay: "short",
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 1,
+});
+const currencyFull = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+
 interface MetricChartProps {
   title: string;
-  dataKey: string;
+  dataKey: keyof MonthlyChartDatum;
   color: string;
   chartData: MonthlyChartDatum[];
   formatAsCurrency?: boolean;
 }
 
 function MetricChart({ title, dataKey, color, chartData, formatAsCurrency }: MetricChartProps) {
+  // Counts get thousands separators too (1,234 — not 1234) so a busy month
+  // reads cleanly; currency uses a compact axis ($1.2K) but full value in tip.
   const formatValue = (value: number) =>
-    formatAsCurrency ? `$${value.toLocaleString()}` : value.toString();
+    formatAsCurrency ? currencyFull.format(value) : value.toLocaleString();
+  const formatAxis = (value: number) =>
+    formatAsCurrency ? currencyCompact.format(value) : value.toLocaleString();
+
+  // The trailing-12-month average is the baseline a single month is judged
+  // against ("is this month above or below my norm?"). Including zero-activity
+  // months is deliberate: they are real months, so the average reflects the
+  // true monthly pace rather than only the months that happened to have data.
+  const values = chartData.map((d) => Number(d[dataKey]) || 0);
+  const total = values.reduce((sum, v) => sum + v, 0);
+  const average = total / values.length;
+  const latest = values[values.length - 1] ?? 0;
+
+  // A flat all-zero series (e.g. a brand-new club view) has no meaningful
+  // baseline to draw, so suppress the reference line there.
+  const showAverage = average > 0;
+
+  // Text alternative for screen readers and a scannable headline for everyone:
+  // total across the window plus the most recent month.
+  const summary = `${title}: ${formatValue(total)} total over the last 12 months, ${formatValue(
+    latest
+  )} this month.`;
+  const gradientId = `metric-fill-${String(dataKey)}`;
 
   return (
     <div className="rounded-xl border border-gray-100 bg-card p-5 shadow-card">
-      <h3 className="mb-4 text-sm font-semibold text-card-foreground">{title}</h3>
-      <div className="h-56">
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <h3 className="text-sm font-semibold text-card-foreground">{title}</h3>
+        <span className="text-xs font-medium text-muted-foreground">
+          {formatValue(total)} total
+        </span>
+      </div>
+      <div className="h-56" role="img" aria-label={summary}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+          <AreaChart
+            data={chartData}
+            margin={{ top: 8, right: 20, left: 0, bottom: 5 }}
+            accessibilityLayer
+          >
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={color} stopOpacity={0.35} />
+                <stop offset="95%" stopColor={color} stopOpacity={0.04} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
             <XAxis
               dataKey="date"
               tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }}
               axisLine={{ stroke: "var(--color-border)" }}
               tickLine={false}
+              minTickGap={8}
             />
             <YAxis
               tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }}
               axisLine={false}
               tickLine={false}
-              tickFormatter={formatAsCurrency ? (v) => new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short', style: 'currency', currency: 'USD', maximumFractionDigits: 1 }).format(v) : undefined}
-              width={formatAsCurrency ? 50 : 30}
+              tickFormatter={formatAxis}
+              width={formatAsCurrency ? 52 : 40}
               allowDecimals={false}
             />
             <Tooltip
@@ -86,13 +140,31 @@ function MetricChart({ title, dataKey, color, chartData, formatAsCurrency }: Met
               formatter={(value: number) => [formatValue(value), title]}
               labelStyle={{ fontWeight: 600, marginBottom: 4 }}
             />
-            <Bar
+            {showAverage && (
+              <ReferenceLine
+                y={average}
+                stroke="var(--color-muted-foreground)"
+                strokeDasharray="4 4"
+                strokeOpacity={0.6}
+                label={{
+                  value: `avg ${formatValue(Math.round(average))}`,
+                  position: "insideTopRight",
+                  fontSize: 10,
+                  fill: "var(--color-muted-foreground)",
+                }}
+              />
+            )}
+            <Area
+              type="monotone"
               dataKey={dataKey}
-              fill={color}
-              radius={[4, 4, 0, 0]}
-              maxBarSize={40}
+              stroke={color}
+              strokeWidth={2}
+              fill={`url(#${gradientId})`}
+              dot={false}
+              activeDot={{ r: 4, strokeWidth: 0 }}
+              isAnimationActive={false}
             />
-          </BarChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>
@@ -103,7 +175,7 @@ export function DashboardCharts({ data, revenueData = [] }: DashboardChartsProps
   const now = new Date();
   const chartData = buildWindow(now);
 
-  // Index the window by year-month so each datapoint lands in exactly one bar,
+  // Index the window by year-month so each datapoint lands in exactly one point,
   // keyed by both year and month — no cross-year collapsing.
   const byKey: Record<string, MonthlyChartDatum> = {};
   for (let i = WINDOW_MONTHS - 1; i >= 0; i--) {
