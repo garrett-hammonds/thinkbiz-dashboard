@@ -51,3 +51,37 @@ export async function sendEmail(message: EmailMessage): Promise<boolean> {
     return false;
   }
 }
+
+export interface EmailDiagnosticResult {
+  ok: boolean;
+  // Surfaces the reason a send didn't go out so the admin diagnostic can show
+  // it (e.g. "domain is not verified", "API key is invalid"). Never throws.
+  error?: string;
+  from?: string;
+}
+
+// Like sendEmail but reports the failure reason instead of swallowing it. Used
+// only by the admin diagnostic endpoint — not part of the normal send path.
+export async function sendEmailDiagnostic(message: EmailMessage): Promise<EmailDiagnosticResult> {
+  const resend = getResend();
+  const from = process.env.EMAIL_FROM;
+  if (!resend) return { ok: false, error: 'RESEND_API_KEY is not set on the server' };
+  if (!from) return { ok: false, error: 'EMAIL_FROM is not set on the server' };
+
+  try {
+    const { error } = await resend.emails.send({
+      from,
+      to: message.to,
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
+    });
+    if (error) {
+      return { ok: false, from, error: (error.message || String(error)).slice(0, 300) };
+    }
+    return { ok: true, from };
+  } catch (err) {
+    const e = err as { message?: string };
+    return { ok: false, from, error: (e?.message || 'unknown error').toString().slice(0, 300) };
+  }
+}

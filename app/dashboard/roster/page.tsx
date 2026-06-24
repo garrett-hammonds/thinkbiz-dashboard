@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { createClient as createAdminClient, type SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
 import { getMemberForUser } from '@/utils/supabase/getMember';
+import { isBillingEnabled } from '@/lib/stripe/client';
+import { isMemberPaid } from '@/utils/membership';
 import { Navbar } from '@/components/navbar';
 import { RosterTable, type RosterRow } from './RosterTable';
 
@@ -97,7 +99,7 @@ export default async function RosterPage() {
       admin
         .from('members')
         .select(
-          'id, first_name, last_name, email, phone_number, company_name, title, member_headshot, is_admin, club_director, auth_user_id',
+          'id, first_name, last_name, email, phone_number, company_name, title, member_headshot, is_admin, club_director, auth_user_id, subscription_status',
         )
         .eq('is_active', true)
         .eq('current_club_id', member.current_club_id)
@@ -123,6 +125,10 @@ export default async function RosterPage() {
     isDirector: !!m.club_director,
     isAdmin: !!m.is_admin,
     joined: !!m.auth_user_id && signedInIds.has(m.auth_user_id),
+    // Directors and admins aren't billed, so they have no payment status to
+    // track. Everyone else is "paid" only with an active/trialing subscription.
+    billable: !m.is_admin && !m.club_director,
+    paid: isMemberPaid(m),
   }));
 
   return (
@@ -136,7 +142,7 @@ export default async function RosterPage() {
         </p>
       </div>
 
-      <RosterTable rows={rows} />
+      <RosterTable rows={rows} showPayment={isBillingEnabled()} />
     </RosterShell>
   );
 }

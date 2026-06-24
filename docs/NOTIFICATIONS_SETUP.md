@@ -9,7 +9,7 @@ is in place; this doc covers the one-time operational steps to turn it on.
 |---|---|---|
 | Application approved | Inline in `approveApplication` server action | The approved member (push + email) |
 | Weekly log reminder | Vercel Cron → `GET /api/cron/weekly-log-reminder` | Active members with no log in the last 7 days (push + email) |
-| New chat message | Supabase Database Webhook → `POST /api/webhooks/chat-message` | Channel members minus author: **push to all**, **email only to @-mentioned** |
+| New chat message | Web client → `notifyChatMessage` server action (fires on send) | Channel members minus author: **push to all**, **email only to @-mentioned** |
 
 All sending goes through `lib/notifications/dispatch.ts`, which honors each
 member's saved preferences (`notification_preferences`). Preferences default to
@@ -38,18 +38,29 @@ See `.env.example`. Set these locally and in Vercel:
 (`0 14 * * 5`). Adjust the day/time/timezone as desired. Vercel injects the
 `CRON_SECRET` Bearer header automatically on deployed projects.
 
-## 4. Supabase Database Webhook (chat)
+## 4. Chat notifications (no setup required)
 
-Chat messages are inserted client-side, so notifications rely on a Database
-Webhook. In the Supabase dashboard → **Database → Webhooks**, create a webhook:
+Chat notifications are triggered by the web client itself: right after a message
+is inserted, it calls the `notifyChatMessage` server action, which dispatches
+push + email through `lib/notifications/chat.ts`. **No Supabase Database Webhook
+is required** — this works on every environment out of the box.
 
-- Table: `public.chat_messages`
-- Events: **Insert**
-- Type: HTTP Request, **POST** to `https://<your-domain>/api/webhooks/chat-message`
+The dispatcher claims each message atomically via `chat_messages.notified_at`
+(added by `supabase/migrations/20260624_chat_notified_at.sql`), so a message is
+delivered exactly once even if more than one trigger fires.
+
+### Optional backstop webhook
+
+`POST /api/webhooks/chat-message` still exists for messages created **outside**
+the web client (e.g. server-side inserts). If you want it, create a Supabase
+Database Webhook (**Database → Webhooks**):
+
+- Table: `public.chat_messages`, Events: **Insert**
+- HTTP Request, **POST** to `https://<your-domain>/api/webhooks/chat-message`
 - HTTP header: `x-webhook-secret: <CHAT_WEBHOOK_SECRET>`
 
-This is per-environment and is **not** recreated by the migration on preview
-branches — configure it wherever you want chat notifications.
+Because dispatch is idempotent, running the webhook alongside the client trigger
+will **not** double-send. Most deployments don't need it.
 
 ## 5. Replace placeholder icons (optional)
 

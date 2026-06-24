@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { getMemberForUser } from '@/utils/supabase/getMember';
 import { sendPushDiagnostic } from '@/lib/notifications/push-server';
+import { sendEmailDiagnostic } from '@/lib/email/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,7 @@ export const dynamic = 'force-dynamic';
 // This isolates "sending is broken" (e.g. a VAPID key mismatch → 403) from
 // "the trigger isn't firing" (the chat webhook), and sidesteps the chat rule
 // that never notifies a message's own author.
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -86,20 +87,46 @@ export async function GET() {
   // the author = you), then layers on push prefs + live subscriptions.
   const chatSimulation = await simulateChatRecipients(admin, member.id, member.current_club_id);
 
+  // Email delivery test (opt-in via ?email=1 so we don't email the admin on
+  // every diagnostic load). Sends a real email to the admin's own address and
+  // surfaces Resend's exact error — this is the only in-app way to see *why*
+  // email is failing (e.g. an unverified sending domain), which the config
+  // booleans above can't reveal.
+  const wantEmailTest = new URL(request.url).searchParams.get('email') === '1';
+  let emailTest: { attempted: boolean; to?: string; ok?: boolean; from?: string; error?: string } = {
+    attempted: false,
+  };
+  if (wantEmailTest) {
+    if (!member.email) {
+      emailTest = { attempted: true, error: 'Your member record has no email address on file.' };
+    } else {
+      const res = await sendEmailDiagnostic({
+        to: member.email,
+        subject: 'ThinkBiz email delivery test',
+        html: '<p>If you received this, Resend email delivery is working. 🎉</p>',
+        text: 'If you received this, Resend email delivery is working.',
+      });
+      emailTest = { attempted: true, to: member.email, ok: res.ok, from: res.from, error: res.error };
+    }
+  }
+
   return NextResponse.json({
     memberId: member.id,
     config,
     subscriptionCount: subscriptions.length,
     results,
     chatSimulation,
+    emailTest,
     hint:
       subscriptions.length === 0
         ? 'No push subscriptions for your member. Enable push from the installed app on this device first.'
         : !config.vapidPublicKeysMatch
           ? 'VAPID_PUBLIC_KEY and NEXT_PUBLIC_VAPID_PUBLIC_KEY are not the same key — every push will 403. Set all three VAPID vars from one keypair, redeploy, then re-subscribe each device.'
           : results.every((r) => r.ok)
-            ? 'Push sent successfully. If chat pushes still don’t arrive, the issue is the trigger (chat webhook) or you were the message author (authors are never notified).'
+            ? 'Push sent successfully. Chat notifications are now triggered by the web client itself (no Supabase webhook required); authors are never notified of their own messages.'
             : 'Push send failed — see statusCode/error per subscription (403/401 = VAPID mismatch, 404/410 = stale endpoint).',
+    emailHint:
+      'Add ?email=1 to this URL to send a real test email to yourself and see Resend’s exact response. A common failure is EMAIL_FROM using an unverified domain (the .env.example placeholder yourdomain.com), which Resend rejects.',
   });
 }
 
