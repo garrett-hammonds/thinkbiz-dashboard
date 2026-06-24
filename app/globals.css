@@ -35,6 +35,7 @@
 
   /* Custom Utilities */
   --shadow-card: var(--shadow-card);
+  --shadow-card-hover: var(--shadow-card-hover);
 }
 
 :root {
@@ -48,6 +49,11 @@
   --radius-md: 0.5rem;
   --radius-lg: 1rem;
   --shadow-card: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(33,189,200,.08);
+  /* Elevated state for interactive cards (hover). Slightly deeper, with a
+     stronger teal tint so the lift reads on-brand. Previously referenced by
+     `hover:shadow-card-hover` in several places but never defined, so those
+     hover states changed position without changing elevation. */
+  --shadow-card-hover: 0 4px 10px rgba(0,0,0,.08), 0 12px 28px rgba(33,189,200,.16);
   --transition-base: 200ms ease;
 
   /* Base Structural Variables */
@@ -56,8 +62,13 @@
   --card: #ffffff;
   --card-foreground: #1a1d23;
   --primary-foreground: #ffffff;
-  --secondary: #f0f2f5;
-  --secondary-foreground: #1a1d23;
+  /* Brand "Secondary" is Navy (per the style guide), not a light surface.
+     It is used two ways across the app: as the darken-on-hover target for the
+     teal primary buttons (`bg-primary hover:bg-secondary`) and as a navy accent
+     for badges/avatars/links (`bg-secondary/10 text-secondary`). Light-gray
+     surfaces use `muted`, never `secondary`. */
+  --secondary: #086788;
+  --secondary-foreground: #ffffff;
   --muted: #f0f2f5;
   --muted-foreground: #6b7280;
   --accent-foreground: #1a1d23; /* Dark text on yellow accent */
