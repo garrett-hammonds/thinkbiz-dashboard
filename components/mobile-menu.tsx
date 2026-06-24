@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { User, LifeBuoy, Menu, X, UserPlus, Shield, ClipboardList, MessageSquare, Users, Rocket } from "lucide-react";
+import { User, LifeBuoy, Menu, X, UserPlus, Shield, ClipboardList, MessageSquare, Users, UserCheck, Rocket } from "lucide-react";
 
 export function MobileMenu({ canViewApps, isAdmin, isLoggedIn, chatUnread = 0 }: { canViewApps: boolean; isAdmin: boolean; isLoggedIn: boolean; chatUnread?: number }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -74,6 +74,17 @@ export function MobileMenu({ canViewApps, isAdmin, isLoggedIn, chatUnread = 0 }:
               <ClipboardList className="h-4 w-4" aria-hidden="true" />
               Applications
               <Shield className="h-4 w-4 ml-auto text-primary opacity-70" />
+            </Link>
+          )}
+
+          {isLoggedIn && (
+            <Link
+              href="/dashboard/visitors"
+              className="flex w-full justify-start items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => setIsOpen(false)}
+            >
+              <UserCheck className="h-4 w-4" aria-hidden="true" />
+              Visitors
             </Link>
           )}
 
