@@ -92,6 +92,45 @@ URLs, so make sure it points at the real deployed origin in production.
 5. Cancel the subscription from Stripe → the `customer.subscription.deleted`
    webhook flips them back to unpaid and the gate re-engages.
 
+## Existing subscribers (reuse an existing price)
+
+If members are already subscribed to your membership price (e.g. set up through
+GoHighLevel / LeadConnector on the **same** Stripe account), reuse that price —
+nobody needs to resubscribe. The app recognizes existing subscriptions; it
+doesn't require they were created through its own checkout.
+
+**Prerequisite:** the existing subscriptions must live in the same Stripe account
+as `STRIPE_SECRET_KEY`. Verify by opening that Stripe dashboard → Customers and
+confirming your current paying members appear there. (With the typical
+LeadConnector OAuth setup they do — payments settle to your account/bank.) If
+they only appear inside GoHighLevel and not in this Stripe dashboard, they're on
+a different/connected account this key can't see — stop and reassess.
+
+How the app links them (all by email, no resubscribe):
+
+- **On the paywall** — an unpaid member who hits `/billing` is checked against
+  Stripe by email; an existing active subscription is linked and they're sent
+  straight to the dashboard.
+- **Webhook** — subscription events are matched to members by email when there's
+  no metadata/customer-id match yet, so renewals on old subscriptions keep status
+  current.
+- **One-time backfill** — sign in as an admin and visit
+  `/api/admin/reconcile-subscriptions`. It links every active subscription to its
+  member and returns a JSON summary, including any subscriber emails that didn't
+  match a member row (usually an email mismatch to fix by hand). Safe to re-run.
+
+### Safe rollout order (so no paying member is ever gated)
+
+1. Apply the migration and set `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`, but
+   **leave `STRIPE_PRICE_ID` unset** — billing (and the paywall) stays off.
+2. Deploy. Temporarily set `STRIPE_PRICE_ID` only long enough to run the backfill
+   once (`/api/admin/reconcile-subscriptions`), or run the backfill in a
+   preview/staging deploy that has the price set.
+3. Confirm the roster shows your existing members as **Paid** and resolve any
+   unmatched emails.
+4. Set `STRIPE_PRICE_ID` in production and redeploy — the paywall now only stops
+   members who genuinely have no active subscription.
+
 ## Notes
 
 - Members manage/cancel their subscription via the Stripe billing portal
