@@ -1,5 +1,6 @@
 import { DollarSign, Users, Handshake, Heart } from "lucide-react";
 import type { WeeklyLog, RevenueLog } from "@/lib/types/metrics";
+import { METRIC_COLORS } from "@/lib/chartColors";
 
 interface ScorecardsProps {
   logsData: WeeklyLog[];
@@ -16,7 +17,7 @@ interface ScorecardProps {
 
 function Scorecard({ title, value, subtitle, icon, accentColor }: ScorecardProps) {
   return (
-    <div className="flex items-start gap-4 rounded-xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+    <div className="flex items-start gap-4 rounded-xl border border-gray-100 bg-card p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover:-translate-y-[2px]">
       <div
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg"
         style={{ backgroundColor: `${accentColor}14`, color: accentColor }}
@@ -55,26 +56,26 @@ export function Scorecards({ logsData, revenueData }: ScorecardsProps) {
         title="Total Revenue"
         value={formattedRevenue}
         icon={<DollarSign className="h-5 w-5" />}
-        accentColor="#4CAF50"
+        accentColor={METRIC_COLORS.revenue}
       />
       <Scorecard
         title="Visitors Brought"
         value={totalVisitors.toString()}
         icon={<Users className="h-5 w-5" />}
-        accentColor="#2196F3"
+        accentColor={METRIC_COLORS.visitors}
       />
       <Scorecard
         title="Total 1-on-1s"
         value={totalOneOnOnes.toString()}
         icon={<Handshake className="h-5 w-5" />}
-        accentColor="#9C27B0"
+        accentColor={METRIC_COLORS.oneOnOnes}
       />
       <Scorecard
         title="Members Thanked"
         value={membersThankedCount.toString()}
         subtitle="for closed business"
         icon={<Heart className="h-5 w-5" />}
-        accentColor="#FF9800"
+        accentColor={METRIC_COLORS.thanked}
       />
     </div>
   );

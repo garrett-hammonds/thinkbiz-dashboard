@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { WeeklyLog, RevenueLog, MonthlyChartDatum } from "@/lib/types/metrics";
+import { METRIC_COLORS } from "@/lib/chartColors";
 
 interface DashboardChartsProps {
   data: WeeklyLog[];
@@ -54,7 +55,7 @@ function MetricChart({ title, dataKey, color, chartData, formatAsCurrency }: Met
     formatAsCurrency ? `$${value.toLocaleString()}` : value.toString();
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+    <div className="rounded-xl border border-gray-100 bg-card p-5 shadow-card">
       <h3 className="mb-4 text-sm font-semibold text-card-foreground">{title}</h3>
       <div className="h-56">
         <ResponsiveContainer width="100%" height="100%">
@@ -135,26 +136,26 @@ export function DashboardCharts({ data, revenueData = [] }: DashboardChartsProps
       <MetricChart
         title="Revenue by Month"
         dataKey="revenue"
-        color="#4CAF50"
+        color={METRIC_COLORS.revenue}
         chartData={chartData}
         formatAsCurrency
       />
       <MetricChart
         title="Visitors by Month"
         dataKey="visitors"
-        color="#2196F3"
+        color={METRIC_COLORS.visitors}
         chartData={chartData}
       />
       <MetricChart
         title="1-on-1s by Month"
         dataKey="oneOnOnes"
-        color="#9C27B0"
+        color={METRIC_COLORS.oneOnOnes}
         chartData={chartData}
       />
       <MetricChart
         title="Members Thanked by Month"
         dataKey="thanked"
-        color="#FF9800"
+        color={METRIC_COLORS.thanked}
         chartData={chartData}
       />
     </div>

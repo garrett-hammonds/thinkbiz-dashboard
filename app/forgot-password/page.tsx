@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Navbar } from '@/components/navbar';
+import SubmitButton from '@/components/SubmitButton';
 import { resetPassword } from './actions';
 
 export default async function ForgotPasswordPage({
@@ -28,12 +29,12 @@ export default async function ForgotPasswordPage({
               required
               className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors mb-4"
             />
-            <button
-              type="submit"
-              className="w-full bg-primary text-white hover:bg-secondary rounded-lg px-6 py-3 font-semibold transition-colors duration-200"
+            <SubmitButton
+              pendingLabel="Sending link…"
+              className="w-full bg-primary text-white hover:bg-secondary rounded-lg px-6 py-3 font-semibold transition-colors duration-200 focus-visible:outline-primary"
             >
               Reset Password
-            </button>
+            </SubmitButton>
           </form>
 
           <Link href="/login" className="text-sm text-gray-500 hover:text-primary transition-colors block text-center mt-6">

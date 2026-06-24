@@ -5,6 +5,7 @@ import { getMemberForUser } from '@/utils/supabase/getMember';
 import { Navbar } from "@/components/navbar";
 import { Scorecards } from "@/components/scorecards";
 import { DashboardCharts } from "@/components/dashboard-charts";
+import DashboardEmptyState from "@/components/DashboardEmptyState";
 import GettingStartedBanner from "@/components/GettingStartedBanner";
 import FlashMessage from "@/components/FlashMessage";
 import type { WeeklyLog, RevenueLog } from "@/lib/types/metrics";
@@ -107,16 +108,26 @@ export default async function DashboardPage({
 
         <GettingStartedBanner hasLoggedSuccess={logs.length > 0} />
 
-        <section aria-label="Key metrics" className="mb-8">
-          <Scorecards logsData={logs} revenueData={revenue} />
-        </section>
+        {logs.length === 0 && revenue.length === 0 ? (
+          // Brand-new member: no logs and no revenue yet. A guided empty state
+          // converts far better than four $0 cards and four empty charts.
+          <section aria-label="Get started" className="mb-8">
+            <DashboardEmptyState />
+          </section>
+        ) : (
+          <>
+            <section aria-label="Key metrics" className="mb-8">
+              <Scorecards logsData={logs} revenueData={revenue} />
+            </section>
 
-        <section aria-label="Monthly trends" className="mb-8">
-          <h2 className="mb-4 text-sm font-semibold text-muted-foreground">
-            Monthly trends · last 12 months
-          </h2>
-          <DashboardCharts data={logs} revenueData={revenue} />
-        </section>
+            <section aria-label="Monthly trends" className="mb-8">
+              <h2 className="mb-4 text-sm font-semibold text-muted-foreground">
+                Monthly trends · last 12 months
+              </h2>
+              <DashboardCharts data={logs} revenueData={revenue} />
+            </section>
+          </>
+        )}
 
         {member?.current_club_id && (
           <div className="mt-16 border-t border-gray-200 pt-12">
