@@ -21,8 +21,10 @@ import { redirect } from 'next/navigation';
 //      confirmation so the form can't be used to probe which emails exist.
 //
 // Every link is generated as a `token_hash` and emailed by us (via Resend)
-// pointing at /auth/callback, which verifies it server-side — stateless and
-// device-independent. See utils/supabase/authLinks.ts.
+// pointing at /auth/confirm, which verifies it server-side after the member
+// clicks "Continue" — stateless, device-independent, and safe from link
+// prefetchers that would otherwise spend the one-time token. See
+// utils/supabase/authLinks.ts.
 export async function resetPassword(formData: FormData) {
   const email = ((formData.get('email') as string | null) ?? '').trim();
   if (!email) {
