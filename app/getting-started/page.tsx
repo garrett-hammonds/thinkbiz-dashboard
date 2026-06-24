@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { getMemberForUser } from '@/utils/supabase/getMember';
+import { membershipGateRedirect } from '@/utils/membership';
 import { Navbar } from '@/components/navbar';
 import GettingStartedChecklist from '@/components/GettingStartedChecklist';
 
@@ -20,6 +21,9 @@ export default async function GettingStartedPage() {
   // reaches this page has already finished it — but check the column directly
   // so the checklist reflects the real state rather than assuming.
   if (!member.profile_completed_at) redirect('/onboarding');
+
+  const gate = membershipGateRedirect(member);
+  if (gate) redirect(gate);
 
   // Has the member recorded any success tracking yet?
   const { count: logCount } = await supabase

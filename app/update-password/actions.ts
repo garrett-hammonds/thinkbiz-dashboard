@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
+import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 export async function updateUserPassword(formData: FormData) {
@@ -30,6 +31,10 @@ export async function updateUserPassword(formData: FormData) {
     redirect(`/update-password?message=${encodeURIComponent(error.message)}`);
   }
 
-  await supabase.auth.signOut();
-  redirect('/login?message=Password updated successfully. Please log in.');
+  // Keep the member signed in and drop them straight into the app. The dashboard
+  // routes them on to onboarding (if their profile isn't complete) and then to
+  // the membership paywall (if they haven't paid) — no need to make someone who
+  // just set a password type it again.
+  revalidatePath('/', 'layout');
+  redirect('/dashboard');
 }

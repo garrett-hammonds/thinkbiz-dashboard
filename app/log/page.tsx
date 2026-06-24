@@ -4,6 +4,7 @@ import { WeeklyLogForm } from "@/components/WeeklyLogForm";
 import FlashMessage from "@/components/FlashMessage";
 import { createClient } from "@/utils/supabase/server";
 import { getMemberForUser } from "@/utils/supabase/getMember";
+import { membershipGateRedirect } from "@/utils/membership";
 import { getClubDirectory } from "@/utils/supabase/directory";
 
 export default async function LogPage({
@@ -27,6 +28,11 @@ export default async function LogPage({
 
   if (!member.profile_completed_at) {
     redirect('/onboarding');
+  }
+
+  const gate = membershipGateRedirect(member);
+  if (gate) {
+    redirect(gate);
   }
 
   // Club-scoped: you can record closed business thanking a fellow club member.

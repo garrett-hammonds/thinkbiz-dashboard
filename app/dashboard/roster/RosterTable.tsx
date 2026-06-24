@@ -11,6 +11,8 @@ import {
   Building2,
   Send,
   Loader2,
+  CreditCard,
+  AlertCircle,
 } from 'lucide-react';
 import { resendInvite } from '@/app/actions/resendInvite';
 
@@ -25,9 +27,14 @@ export interface RosterRow {
   isDirector: boolean;
   isAdmin: boolean;
   joined: boolean;
+  // Whether this member is billed (regular members are; directors/admins aren't).
+  billable: boolean;
+  // Whether their membership subscription is active/trialing.
+  paid: boolean;
 }
 
 type StatusFilter = 'all' | 'joined' | 'not_joined';
+type PaymentFilter = 'all' | 'paid' | 'unpaid';
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -36,18 +43,23 @@ function initials(name: string): string {
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 }
 
-export function RosterTable({ rows }: { rows: RosterRow[] }) {
+export function RosterTable({ rows, showPayment = false }: { rows: RosterRow[]; showPayment?: boolean }) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
+  const [payment, setPayment] = useState<PaymentFilter>('all');
 
   const joinedCount = useMemo(() => rows.filter((r) => r.joined).length, [rows]);
   const notJoinedCount = rows.length - joinedCount;
+  const paidCount = useMemo(() => rows.filter((r) => r.billable && r.paid).length, [rows]);
+  const unpaidCount = useMemo(() => rows.filter((r) => r.billable && !r.paid).length, [rows]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
       if (status === 'joined' && !r.joined) return false;
       if (status === 'not_joined' && r.joined) return false;
+      if (showPayment && payment === 'paid' && !(r.billable && r.paid)) return false;
+      if (showPayment && payment === 'unpaid' && !(r.billable && !r.paid)) return false;
       if (!q) return true;
       return (
         r.name.toLowerCase().includes(q) ||
@@ -56,7 +68,7 @@ export function RosterTable({ rows }: { rows: RosterRow[] }) {
         (r.title || '').toLowerCase().includes(q)
       );
     });
-  }, [rows, search, status]);
+  }, [rows, search, status, payment, showPayment]);
 
   const tabs: { key: StatusFilter; label: string; count: number }[] = [
     { key: 'all', label: 'All members', count: rows.length },
@@ -64,10 +76,16 @@ export function RosterTable({ rows }: { rows: RosterRow[] }) {
     { key: 'not_joined', label: 'Not joined yet', count: notJoinedCount },
   ];
 
+  const paymentTabs: { key: PaymentFilter; label: string; count: number }[] = [
+    { key: 'all', label: 'All', count: rows.filter((r) => r.billable).length },
+    { key: 'paid', label: 'Paid', count: paidCount },
+    { key: 'unpaid', label: 'Unpaid', count: unpaidCount },
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       {/* Summary scorecards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${showPayment ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
         <SummaryCard
           label="Active members"
           value={rows.length}
@@ -78,11 +96,26 @@ export function RosterTable({ rows }: { rows: RosterRow[] }) {
           value={joinedCount}
           icon={<CheckCircle2 className="h-5 w-5 text-primary" />}
         />
-        <SummaryCard
-          label="Not joined yet"
-          value={notJoinedCount}
-          icon={<Clock className="h-5 w-5 text-accent" />}
-        />
+        {showPayment ? (
+          <>
+            <SummaryCard
+              label="Paid members"
+              value={paidCount}
+              icon={<CreditCard className="h-5 w-5 text-primary" />}
+            />
+            <SummaryCard
+              label="Unpaid members"
+              value={unpaidCount}
+              icon={<AlertCircle className="h-5 w-5 text-accent" />}
+            />
+          </>
+        ) : (
+          <SummaryCard
+            label="Not joined yet"
+            value={notJoinedCount}
+            icon={<Clock className="h-5 w-5 text-accent" />}
+          />
+        )}
       </div>
 
       {/* Controls */}
@@ -123,6 +156,33 @@ export function RosterTable({ rows }: { rows: RosterRow[] }) {
         </div>
       </div>
 
+      {showPayment && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Payment</span>
+          {paymentTabs.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setPayment(t.key)}
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
+                payment === t.key
+                  ? 'bg-primary text-white'
+                  : 'bg-muted text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {t.label}
+              <span
+                className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-bold ${
+                  payment === t.key ? 'bg-white/20 text-white' : 'bg-white text-gray-900'
+                }`}
+              >
+                {t.count}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Roster */}
       {filtered.length === 0 ? (
         <div className="rounded-xl border border-gray-100 bg-white p-10 text-center text-muted-foreground shadow-card">
@@ -138,6 +198,7 @@ export function RosterTable({ rows }: { rows: RosterRow[] }) {
                 <th className="px-6 py-3">Contact</th>
                 <th className="px-6 py-3">Company</th>
                 <th className="px-6 py-3">App status</th>
+                {showPayment && <th className="px-6 py-3">Payment</th>}
               </tr>
             </thead>
             <tbody>
@@ -191,6 +252,11 @@ export function RosterTable({ rows }: { rows: RosterRow[] }) {
                       {!r.joined && <ResendInviteButton memberId={r.id} />}
                     </div>
                   </td>
+                  {showPayment && (
+                    <td className="px-6 py-4">
+                      <PaymentBadge paid={r.paid} billable={r.billable} />
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -212,6 +278,7 @@ export function RosterTable({ rows }: { rows: RosterRow[] }) {
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <StatusBadge joined={r.joined} />
+                    {showPayment && <PaymentBadge paid={r.paid} billable={r.billable} />}
                     {!r.joined && <ResendInviteButton memberId={r.id} />}
                   </div>
                 </div>
@@ -336,6 +403,27 @@ function ResendInviteButton({ memberId }: { memberId: string }) {
         <span className="max-w-48 text-xs text-red-600">{error}</span>
       )}
     </div>
+  );
+}
+
+function PaymentBadge({ paid, billable }: { paid: boolean; billable: boolean }) {
+  // Directors/admins aren't billed — nothing to show.
+  if (!billable) {
+    return <span className="text-sm text-gray-400">—</span>;
+  }
+  if (paid) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-0.5 text-sm font-medium text-emerald-700">
+        <CreditCard className="h-3.5 w-3.5" />
+        Paid
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-0.5 text-sm font-medium text-red-700">
+      <AlertCircle className="h-3.5 w-3.5" />
+      Unpaid
+    </span>
   );
 }
 

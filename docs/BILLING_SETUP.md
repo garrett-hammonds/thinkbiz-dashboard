@@ -1,0 +1,101 @@
+# Membership billing setup (Stripe)
+
+Members must hold an active Stripe subscription to use the app. The code is in
+place; this doc covers the one-time Stripe + env setup to turn it on.
+
+## How it works
+
+- **Hard gate after onboarding.** A member sets their password → completes their
+  profile (`/onboarding`) → then hits the paywall at `/billing` and can't reach
+  the dashboard, chat, logs, or getting-started until their subscription is
+  active. Directors and admins are never gated (they run the clubs and aren't
+  billed). `/profile` stays reachable so a member can always log out.
+- **One price for everyone.** A single recurring Stripe Price (`STRIPE_PRICE_ID`)
+  applies to all members across all clubs.
+- **Feature-flagged.** The gate is a no-op until BOTH `STRIPE_SECRET_KEY` and
+  `STRIPE_PRICE_ID` are set (`isBillingEnabled()`). Set them when you're ready to
+  switch the paywall on; until then the app behaves exactly as before.
+- **Directors see who paid.** The roster (`/dashboard/roster`) shows a Paid /
+  Unpaid badge per member, summary counts, and a payment filter — but only once
+  billing is enabled.
+
+### Flow
+
+```
+Approved member → welcome email → set password → /onboarding → /billing
+   → Stripe Checkout (hosted) → /billing/success (confirms + unlocks) → /dashboard
+```
+
+Source of truth for ongoing status (renewals, failed payments, cancellations) is
+the webhook at `POST /api/webhooks/stripe`; the success route only does the
+first immediate confirmation so a member who just paid isn't bounced back to the
+paywall while the webhook is in flight.
+
+## 1. Apply the database migration
+
+`supabase/migrations/20260624_membership_billing.sql` adds the billing columns to
+`members` (`stripe_customer_id`, `stripe_subscription_id`, `subscription_status`,
+`subscription_current_period_end`) and an index. Apply with `supabase db push` or
+paste it into the Supabase SQL editor.
+
+## 2. Create the Stripe product & price
+
+In the Stripe dashboard (use **Test mode** while developing):
+
+1. **Products → Add product.** Name it e.g. "ThinkBiz Membership".
+2. Add a **recurring** price (e.g. $X / month). Save.
+3. Copy the **Price ID** (`price_...`) → this is `STRIPE_PRICE_ID`.
+4. **Developers → API keys** → copy the **Secret key** (`sk_test_...` in test) →
+   this is `STRIPE_SECRET_KEY`.
+
+## 3. Set up the webhook
+
+**Production / preview:**
+
+1. **Developers → Webhooks → Add endpoint.**
+2. URL: `https://YOUR_DOMAIN/api/webhooks/stripe`
+3. Subscribe to these events:
+   - `checkout.session.completed`
+   - `customer.subscription.created`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+   - `invoice.payment_failed`
+4. Copy the endpoint's **Signing secret** (`whsec_...`) → `STRIPE_WEBHOOK_SECRET`.
+
+**Local dev:** install the Stripe CLI and run:
+
+```
+stripe listen --forward-to localhost:3000/api/webhooks/stripe
+```
+
+It prints a `whsec_...` to use as `STRIPE_WEBHOOK_SECRET` locally.
+
+## 4. Environment variables
+
+Set these locally and in Vercel (see `.env.example`):
+
+- `STRIPE_SECRET_KEY` — Stripe secret key.
+- `STRIPE_PRICE_ID` — the recurring membership Price ID.
+- `STRIPE_WEBHOOK_SECRET` — the webhook signing secret.
+
+`NEXT_PUBLIC_SITE_URL` (already set) is used to build the Checkout success/cancel
+URLs, so make sure it points at the real deployed origin in production.
+
+## 5. Verify
+
+1. With billing enabled, sign in as a non-director member with no subscription →
+   you should land on `/billing`.
+2. Use a [Stripe test card](https://stripe.com/docs/testing) (`4242 4242 4242
+   4242`, any future expiry/CVC) to subscribe → you should land on `/dashboard`.
+3. Check the member's row in `members` now has `subscription_status = active`.
+4. As a director, open `/dashboard/roster` → the member shows **Paid**.
+5. Cancel the subscription from Stripe → the `customer.subscription.deleted`
+   webhook flips them back to unpaid and the gate re-engages.
+
+## Notes
+
+- Members manage/cancel their subscription via the Stripe billing portal
+  (`createBillingPortalSession` in `app/billing/actions.ts`). Wire a "Manage
+  membership" button to it from the profile page when you want to surface it.
+- To roll out gradually, leave `STRIPE_PRICE_ID` unset (gate off) while you
+  migrate existing members, then set it to switch the paywall on for everyone.
