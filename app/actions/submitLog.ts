@@ -64,7 +64,7 @@ export async function submitLogAction(formData: FormData) {
       // Already logged this week. If there's no closed business to add, there's
       // nothing more to do — tell them and stop.
       if (validThanks.length === 0) {
-        redirect('/log?message=You have already submitted a log for this week!');
+        redirect('/log?message=You have already logged this week — no changes were made.');
       }
 
       const { data: existingLog } = await supabase
@@ -75,14 +75,14 @@ export async function submitLogAction(formData: FormData) {
         .maybeSingle();
 
       if (!existingLog) {
-        redirect('/log?message=You have already submitted a log for this week!');
+        redirect('/log?message=You have already logged this week — no changes were made.');
       }
 
       logId = existingLog.id;
       alreadyLogged = true;
     } else {
       console.error('Error inserting weekly log:', logError);
-      redirect('/log?message=Failed to insert log. Please try again.');
+      redirect('/log?message=Something went wrong and your log could not be saved. Please try again.');
     }
   }
 
@@ -110,7 +110,7 @@ export async function submitLogAction(formData: FormData) {
   revalidatePath('/dashboard');
 
   if (alreadyLogged) {
-    redirect('/dashboard?message=Closed business added to your existing log for this week');
+    redirect('/dashboard?message=We added that closed business to this week’s log.');
   }
-  redirect('/dashboard?message=Log submitted successfully');
+  redirect('/dashboard?message=Your log is saved.');
 }
