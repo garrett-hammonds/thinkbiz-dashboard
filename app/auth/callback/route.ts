@@ -2,13 +2,21 @@ import { NextResponse } from 'next/server';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
 
-// Single landing point for every Supabase auth email link — invites, password
-// recovery, and magic links. Supabase delivers these in different shapes
-// depending on project and email-template config, so we handle all of them
-// instead of assuming one:
+// Compatibility landing point for Supabase auth email links. New links we
+// generate now point at /auth/confirm (a button-gated page) instead — see
+// utils/supabase/authLinks.ts — but emails already sitting in members' inboxes
+// still point here, and Supabase's own hosted emails (e.g. director invites) can
+// land here too. We handle every shape Supabase delivers:
+//   - ?token_hash=...&type=...    OTP-style links     → forward to /auth/confirm
 //   - ?code=...                   PKCE / server flow  → exchangeCodeForSession
-//   - ?token_hash=...&type=...    OTP-style links     → verifyOtp
 //   - ?error=...&error_description=...  expired/used  → surface the real reason
+//
+// IMPORTANT: we do NOT call verifyOtp here. A one-time token verified on this
+// plain GET gets spent by the first automated request that touches the link
+// (email scanners, antivirus, Gmail link-prefetch, chat link previews), so the
+// member's own click then fails with "link expired or already used" — the exact
+// bug this flow had. Instead we forward token_hash links to /auth/confirm, which
+// only verifies after the member presses "Continue".
 //
 // Anything we can't turn into a session sends the user back to /login with a
 // plain-language message that points them at "Forgot password" to self-serve a
@@ -36,6 +44,17 @@ export async function GET(request: Request) {
     );
   }
 
+  // OTP-style links (the ones we generate): hand off to the button-gated
+  // confirm page WITHOUT spending the token here. A passive prefetch that
+  // follows this redirect just lands on the confirm page's harmless GET.
+  if (tokenHash && type) {
+    const confirmUrl = new URL('/auth/confirm', request.url);
+    confirmUrl.searchParams.set('token_hash', tokenHash);
+    confirmUrl.searchParams.set('type', type);
+    confirmUrl.searchParams.set('next', safeNext);
+    return NextResponse.redirect(confirmUrl);
+  }
+
   const supabase = await createClient();
 
   if (code) {
@@ -44,12 +63,6 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL(safeNext, request.url));
     }
     console.error('[auth/callback] exchangeCodeForSession failed:', error.message);
-  } else if (tokenHash && type) {
-    const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
-    if (!error) {
-      return NextResponse.redirect(new URL(safeNext, request.url));
-    }
-    console.error('[auth/callback] verifyOtp failed:', error.message);
   }
 
   return NextResponse.redirect(

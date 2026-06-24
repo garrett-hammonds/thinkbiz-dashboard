@@ -15,7 +15,7 @@ export interface ResendInviteResult {
 // Re-sends an app invitation to a member who hasn't joined yet. We mint a fresh
 // sign-in link (invite for brand-new auth users, magic link for ones that
 // already exist) and email it with our branded template. The link is a
-// token_hash pointing at /auth/callback, so it works across devices — see
+// token_hash pointing at /auth/confirm, so it works across devices — see
 // utils/supabase/authLinks.ts.
 export async function resendInvite(memberId: string): Promise<ResendInviteResult> {
   const trimmedId = (memberId || '').trim();

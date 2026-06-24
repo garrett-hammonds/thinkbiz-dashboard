@@ -10,16 +10,22 @@ import { type SupabaseClient } from '@supabase/supabase-js';
 // fails — the member gets dumped on /login. It also depends on the project's
 // redirect allow-list being configured.
 //
-// Instead we generate the link as a `token_hash` and point it straight at our
-// own /auth/callback, which verifies it server-side via `verifyOtp`. That is
+// Instead we generate the link as a `token_hash` and point it at our own
+// /auth/confirm page, which verifies it server-side via `verifyOtp`. That is
 // stateless: it works across devices and browsers and doesn't touch the
 // allow-list or any cookie. This is Supabase's recommended server-side pattern.
+//
+// Crucially, /auth/confirm does NOT verify on page load — it verifies only when
+// the member presses "Continue" (a POST). A one-time token verified on a plain
+// GET gets spent by the first automated GET that touches the link (email
+// scanners, antivirus, Gmail link-prefetch, chat link previews), leaving the
+// real member with "link expired or already used". The button gate prevents that.
 
 type OtpType = 'invite' | 'magiclink' | 'recovery';
 
 function callbackUrl(tokenHash: string, type: OtpType, next: string): string {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-  const url = new URL(`${siteUrl}/auth/callback`);
+  const url = new URL(`${siteUrl}/auth/confirm`);
   url.searchParams.set('token_hash', tokenHash);
   url.searchParams.set('type', type);
   url.searchParams.set('next', next);
