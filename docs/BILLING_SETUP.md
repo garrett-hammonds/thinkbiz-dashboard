@@ -131,10 +131,28 @@ How the app links them (all by email, no resubscribe):
 4. Set `STRIPE_PRICE_ID` in production and redeploy — the paywall now only stops
    members who genuinely have no active subscription.
 
+## Self-service subscription management
+
+Members manage everything themselves from **Profile → Membership**:
+
+- **First-time join** — the "Start membership" button (and the post-onboarding
+  paywall at `/billing`) opens Stripe Checkout.
+- **Manage / change card / add a backup card / update billing info / cancel** —
+  the "Manage membership" button opens the Stripe **Customer Portal**
+  (`createBillingPortalSession`). The card also shows current status (Active,
+  Payment past due, None) and the renewal date.
+
+### Activate the Customer Portal (one-time, required)
+
+The portal must be turned on once per mode or "Manage membership" will error:
+
+1. Stripe dashboard → **Settings → Billing → Customer portal**
+   (https://dashboard.stripe.com/settings/billing/portal).
+2. Activate it, and under **Functionality** enable at least: update payment
+   method, and (if you want self-serve cancellation) cancel subscriptions.
+3. Save. Do this in **Test** and **Live** modes separately.
+
 ## Notes
 
-- Members manage/cancel their subscription via the Stripe billing portal
-  (`createBillingPortalSession` in `app/billing/actions.ts`). Wire a "Manage
-  membership" button to it from the profile page when you want to surface it.
 - To roll out gradually, leave `STRIPE_PRICE_ID` unset (gate off) while you
-  migrate existing members, then set it to switch the paywall on for everyone.
+  reconcile existing members, then set it to switch the paywall on for everyone.

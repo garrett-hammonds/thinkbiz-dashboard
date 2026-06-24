@@ -2,7 +2,9 @@ import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
 import { Navbar } from '@/components/navbar';
 import ProfileForm from '@/components/profile-form';
+import MembershipCard from '@/components/MembershipCard';
 import { getMemberForUser } from '@/utils/supabase/getMember';
+import { isBillingEnabled } from '@/lib/stripe/client';
 import { DEFAULT_PREFS, type NotificationPrefs } from '@/components/NotificationSettings';
 
 export default async function ProfilePage() {
@@ -48,6 +50,16 @@ export default async function ProfilePage() {
     <div className="min-h-screen bg-slate-50">
       <Navbar />
       <main className="py-12 px-4 sm:px-6 lg:px-8">
+        {isBillingEnabled() && (
+          <div className="max-w-3xl mx-auto">
+            <MembershipCard
+              status={member.subscription_status ?? null}
+              billable={!member.is_admin && !member.club_director}
+              hasCustomer={!!member.stripe_customer_id}
+              periodEnd={member.subscription_current_period_end ?? null}
+            />
+          </div>
+        )}
         <ProfileForm member={member} prefs={prefs} />
       </main>
     </div>
