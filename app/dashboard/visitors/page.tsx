@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { QrCode } from 'lucide-react';
 import { createClient } from '@/utils/supabase/server';
 import { getMemberForUser } from '@/utils/supabase/getMember';
+import { getActiveClubId } from '@/utils/activeClub';
 import { Navbar } from '@/components/navbar';
 import { VisitorList, type VisitorRow } from './VisitorList';
 
@@ -39,26 +40,32 @@ export default async function VisitorsPage() {
 
   const canManage = !!(member.is_admin || member.club_director);
 
-  if (!member.current_club_id) {
+  // Directors see their own club; admins see whichever club they've selected in
+  // the switcher (falling back to their own).
+  const activeClubId = await getActiveClubId(member);
+
+  if (!activeClubId) {
     return (
       <VisitorsShell>
         <h1 className="mb-4 text-4xl font-black leading-tight tracking-tight text-foreground">
           Visitors
         </h1>
         <p className="text-muted-foreground">
-          You aren&apos;t assigned to a club yet, so there are no visitors to show.
+          {member.is_admin
+            ? 'Pick a club from the switcher in the top bar to view its visitors.'
+            : "You aren't assigned to a club yet, so there are no visitors to show."}
         </p>
       </VisitorsShell>
     );
   }
 
   // RLS (visitors_select) already scopes reads to the member's own club, but we
-  // filter explicitly so admins (who can read every club) still get only their
-  // current club's list here.
+  // filter explicitly so admins (who can read every club) get only the active
+  // club's list here.
   const { data: visitorsData } = await supabase
     .from('visitors')
     .select('id, first_name, last_name, email, phone, company_name, title, notes, source, visited_on')
-    .eq('club_id', member.current_club_id)
+    .eq('club_id', activeClubId)
     .order('visited_on', { ascending: false })
     .order('created_at', { ascending: false });
 

@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { User, LifeBuoy, Menu, X, UserPlus, Shield, ClipboardList, MessageSquare, Users, UserCheck, Rocket } from "lucide-react";
+import { ClubSwitcher, type SwitcherClub } from "./ClubSwitcher";
 
-export function MobileMenu({ canViewApps, isAdmin, isLoggedIn, chatUnread = 0 }: { canViewApps: boolean; isAdmin: boolean; isLoggedIn: boolean; chatUnread?: number }) {
+export function MobileMenu({ canViewApps, isAdmin, isLoggedIn, chatUnread = 0, switcherClubs = [], activeClubId = null }: { canViewApps: boolean; isAdmin: boolean; isLoggedIn: boolean; chatUnread?: number; switcherClubs?: SwitcherClub[]; activeClubId?: string | null }) {
   const [isOpen, setIsOpen] = useState(false);
 
   // Close on Escape so a keyboard user is never trapped with the menu open.
@@ -41,6 +42,15 @@ export function MobileMenu({ canViewApps, isAdmin, isLoggedIn, chatUnread = 0 }:
             id="mobile-menu-panel"
             className="md:hidden border-t p-6 flex flex-col gap-4 absolute top-24 md:top-14 left-0 w-full bg-card shadow-lg z-50"
           >
+          {isAdmin && switcherClubs.length > 0 && (
+            <div className="pb-2 border-b border-border">
+              <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                Managing club
+              </p>
+              <ClubSwitcher clubs={switcherClubs} activeClubId={activeClubId} />
+            </div>
+          )}
+
           {isAdmin && (
             <Link
               href="/dashboard/invite-director"

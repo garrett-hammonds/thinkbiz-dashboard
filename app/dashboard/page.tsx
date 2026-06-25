@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/admin';
 import { getMemberForUser } from '@/utils/supabase/getMember';
+import { getActiveClubId } from '@/utils/activeClub';
 import { membershipGateRedirect } from '@/utils/membership';
 
 import { Navbar } from "@/components/navbar";
@@ -63,30 +65,42 @@ export default async function DashboardPage({
   const logs = (logsData ?? []) as WeeklyLog[];
   const revenue = (revenueData ?? []) as RevenueLog[];
 
+  // Admins can switch which club they're viewing; everyone else sees their own.
+  const activeClubId = await getActiveClubId(member);
+
   let clubName = '';
   let clubLogs: WeeklyLog[] = [];
   let clubRevenue: RevenueLog[] = [];
 
-  if (member?.current_club_id) {
-    const { data: clubData } = await supabase
+  if (activeClubId) {
+    // An admin viewing a club other than their own would be blanked out by the
+    // member-scoped RLS on weekly_logs/closed_business_thanks, so route their
+    // cross-club reads through the service-role client (same approach as the
+    // roster). Directors read their own club via the normal user client.
+    const clubReader =
+      member.is_admin && process.env.SUPABASE_SERVICE_ROLE_KEY
+        ? createAdminClient()
+        : supabase;
+
+    const { data: clubData } = await clubReader
       .from('clubs')
       .select('start_time, display_name')
-      .eq('id', member.current_club_id)
+      .eq('id', activeClubId)
       .single();
-    
+
     if (clubData) {
       clubName = `${clubData.start_time} ${clubData.display_name}`;
     }
 
-    const clubLogsPromise = supabase
+    const clubLogsPromise = clubReader
     .from('weekly_logs')
     .select(LOG_COLUMNS)
-    .eq('club_id', member.current_club_id);
+    .eq('club_id', activeClubId);
 
-    const clubRevenuePromise = supabase
+    const clubRevenuePromise = clubReader
       .from('closed_business_thanks')
       .select('revenue_amount, created_at, weekly_logs!inner(club_id)')
-      .eq('weekly_logs.club_id', member.current_club_id);
+      .eq('weekly_logs.club_id', activeClubId);
 
     const [{ data: cLogs }, { data: cRevenue }] = await Promise.all([
       clubLogsPromise,
@@ -135,7 +149,7 @@ export default async function DashboardPage({
           </>
         )}
 
-        {member?.current_club_id && (
+        {activeClubId && (
           <div className="mt-16 border-t border-gray-200 pt-12">
             <h2 className="text-3xl font-bold leading-snug text-foreground mb-8">
               Club stats for {clubName}
