@@ -21,6 +21,25 @@ export async function denyApplication(applicationId: string) {
       return { success: false, message: 'Unauthorized' };
     }
 
+    // Admins can deny for any club; a director only for their own. Load the
+    // application's club first so we can enforce that boundary.
+    const { data: application } = await supabase
+      .from('pending_applications')
+      .select('club_id')
+      .eq('id', applicationId)
+      .maybeSingle();
+
+    if (!application) {
+      return { success: false, message: 'Application not found' };
+    }
+
+    if (!member.is_admin && application.club_id !== member.current_club_id) {
+      return {
+        success: false,
+        message: 'You can only deny applications for your own club.',
+      };
+    }
+
     const { error } = await supabase
       .from('pending_applications')
       .delete()

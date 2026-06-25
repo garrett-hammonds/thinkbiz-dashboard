@@ -4,6 +4,7 @@ import { Navbar } from '@/components/navbar';
 import ApproveButton from './ApproveButton';
 import { DenyButton } from './DenyButton';
 import { getMemberForUser } from '@/utils/supabase/getMember';
+import { getSelectedClubId } from '@/utils/activeClub';
 
 export default async function ApplicationsPage() {
   const supabase = await createClient();
@@ -23,20 +24,47 @@ export default async function ApplicationsPage() {
     redirect('/onboarding');
   }
 
-  let query = supabase.from('pending_applications').select('*, clubs(name)').eq('status', 'pending');
+  // Admins review every club's applications by default. When an admin picks a
+  // specific club in the switcher, scope to that club so the queue matches the
+  // rest of their view. Directors are always limited to their own club — and a
+  // director with no club assignment sees nothing (never the whole network).
+  const isAdmin = !!memberData.is_admin;
+  const scopeClubId = isAdmin
+    ? await getSelectedClubId()
+    : memberData.current_club_id ?? null;
 
-  if (!memberData.is_admin) {
-    query = query.eq('club_id', memberData.current_club_id);
+  let query = supabase
+    .from('pending_applications')
+    .select('*, clubs(name)')
+    .eq('status', 'pending');
+  if (scopeClubId) {
+    query = query.eq('club_id', scopeClubId);
   }
+  // Only run the query when there's something in scope: an admin (all clubs or a
+  // selected one) or a director with a club. A director without a club gets an
+  // empty queue rather than the whole network.
+  const applications = isAdmin || scopeClubId ? (await query).data : null;
 
-  const { data: applications } = await query;
+  // Surface the active scope so an admin knows whether they're seeing one club
+  // or the whole network.
+  let scopeLabel = isAdmin ? 'Across all clubs' : 'No club assigned';
+  if (scopeClubId) {
+    const { data: scopeClub } = await supabase
+      .from('clubs')
+      .select('name, display_name')
+      .eq('id', scopeClubId)
+      .maybeSingle();
+    const name = scopeClub?.display_name || scopeClub?.name;
+    scopeLabel = name ? `For ${name}` : 'For the selected club';
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="mb-8 text-4xl font-black leading-tight tracking-tight text-foreground">Pending Applications</h1>
-        
+        <h1 className="mb-1 text-4xl font-black leading-tight tracking-tight text-foreground">Pending Applications</h1>
+        <p className="mb-8 text-sm font-medium text-muted-foreground">{scopeLabel}</p>
+
         {!applications || applications.length === 0 ? (
           <p className="text-muted-foreground">No pending applications</p>
         ) : (

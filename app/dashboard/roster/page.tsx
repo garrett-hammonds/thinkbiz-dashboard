@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient as createAdminClient, type SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
 import { getMemberForUser } from '@/utils/supabase/getMember';
+import { getActiveClubId } from '@/utils/activeClub';
 import { isBillingEnabled } from '@/lib/stripe/client';
 import { isMemberPaid } from '@/utils/membership';
 import { Navbar } from '@/components/navbar';
@@ -56,16 +57,22 @@ export default async function RosterPage() {
     redirect('/onboarding');
   }
 
-  // This roster is scoped to the director's own club. A director without a
-  // club assignment has no roster to show.
-  if (!member.current_club_id) {
+  // Directors see their own club; admins see whichever club they've selected in
+  // the switcher (falling back to their own).
+  const activeClubId = await getActiveClubId(member);
+
+  // No club in context: a director without an assignment, or an admin who has
+  // neither a home club nor a selection.
+  if (!activeClubId) {
     return (
       <RosterShell>
         <h1 className="mb-4 text-4xl font-black leading-tight tracking-tight text-foreground">
           Member Roster
         </h1>
         <p className="text-muted-foreground">
-          You aren&apos;t assigned to a club yet, so there&apos;s no roster to show.
+          {member.is_admin
+            ? 'Pick a club from the switcher in the top bar to view its roster.'
+            : "You aren't assigned to a club yet, so there's no roster to show."}
         </p>
       </RosterShell>
     );
@@ -102,12 +109,12 @@ export default async function RosterPage() {
           'id, first_name, last_name, email, phone_number, company_name, title, member_headshot, is_admin, club_director, auth_user_id, subscription_status',
         )
         .eq('is_active', true)
-        .eq('current_club_id', member.current_club_id)
+        .eq('current_club_id', activeClubId)
         .order('first_name', { ascending: true }),
       admin
         .from('clubs')
         .select('name, display_name')
-        .eq('id', member.current_club_id)
+        .eq('id', activeClubId)
         .maybeSingle(),
       fetchSignedInUserIds(admin),
     ]);

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
+import { getMemberForUser } from '@/utils/supabase/getMember';
 import { buildOnboardingLink } from '@/utils/supabase/authLinks';
 import { dispatchNotifications } from '@/lib/notifications/dispatch';
 import { sendEmail } from '@/lib/email/client';
@@ -17,6 +18,14 @@ export async function approveApplication(applicationId: string) {
       return { success: false, message: 'Unauthorized' };
     }
 
+    // Only admins and club directors may approve. (This runs through the
+    // service-role client below, which bypasses RLS, so the check must be
+    // explicit here.)
+    const member = await getMemberForUser(supabase, user);
+    if (!member || (!member.is_admin && !member.club_director)) {
+      return { success: false, message: 'Unauthorized' };
+    }
+
     const supabaseAdmin = createAdminClient();
 
     const { data: application, error } = await supabaseAdmin
@@ -27,6 +36,14 @@ export async function approveApplication(applicationId: string) {
 
     if (error || !application || application.status === 'approved') {
       return { success: false, message: 'Application not found or already approved.' };
+    }
+
+    // Admins can approve for any club; a director only for their own.
+    if (!member.is_admin && application.club_id !== member.current_club_id) {
+      return {
+        success: false,
+        message: 'You can only approve applications for your own club.',
+      };
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';

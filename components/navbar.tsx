@@ -3,7 +3,9 @@ import Image from "next/image";
 import { User, LifeBuoy, Shield, ClipboardList, UserPlus, MessageSquare, Users, UserCheck, Rocket } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { getMemberForUser } from "@/utils/supabase/getMember";
+import { getSelectedClubId } from "@/utils/activeClub";
 import { MobileMenu } from "./mobile-menu";
+import { ClubSwitcher, type SwitcherClub } from "./ClubSwitcher";
 import ServiceWorkerRegister from "./ServiceWorkerRegister";
 
 export async function Navbar() {
@@ -13,11 +15,27 @@ export async function Navbar() {
   let canViewApps = false;
   let isAdmin = false;
   let chatUnread = 0;
+  let switcherClubs: SwitcherClub[] = [];
+  let activeClubId: string | null = null;
 
   if (user) {
     const member = await getMemberForUser(supabase, user);
     canViewApps = !!(member?.is_admin || member?.club_director);
     isAdmin = !!member?.is_admin;
+
+    // Admins get a club switcher so they can manage any club's director
+    // surfaces, not just their own. Everyone else stays on their own club.
+    if (isAdmin) {
+      const { data: clubsData } = await supabase
+        .from('clubs')
+        .select('id, name, display_name')
+        .order('name');
+      switcherClubs = (clubsData ?? []).map((c) => ({
+        id: c.id,
+        label: c.display_name || c.name,
+      }));
+      activeClubId = await getSelectedClubId();
+    }
 
     // Errors (e.g. chat migration not applied yet) just leave the badge at 0
     const { data: unreadRows } = await supabase.rpc('chat_unread_counts');
@@ -53,6 +71,14 @@ export async function Navbar() {
         </Link>
 
         <div className="hidden md:flex items-center gap-1 sm:gap-2">
+          {isAdmin && switcherClubs.length > 0 && (
+            <ClubSwitcher
+              clubs={switcherClubs}
+              activeClubId={activeClubId}
+              className="mr-1"
+            />
+          )}
+
           {isAdmin && (
             <Link
               href="/dashboard/invite-director"
@@ -149,7 +175,14 @@ export async function Navbar() {
           )}
         </div>
 
-        <MobileMenu canViewApps={canViewApps} isAdmin={isAdmin} isLoggedIn={!!user} chatUnread={chatUnread} />
+        <MobileMenu
+          canViewApps={canViewApps}
+          isAdmin={isAdmin}
+          isLoggedIn={!!user}
+          chatUnread={chatUnread}
+          switcherClubs={switcherClubs}
+          activeClubId={activeClubId}
+        />
       </nav>
     </header>
   );

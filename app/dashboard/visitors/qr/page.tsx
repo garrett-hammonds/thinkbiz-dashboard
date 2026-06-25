@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import QRCode from 'qrcode';
 import { createClient } from '@/utils/supabase/server';
 import { getMemberForUser } from '@/utils/supabase/getMember';
+import { getActiveClubId } from '@/utils/activeClub';
 import { Navbar } from '@/components/navbar';
 import { QrActions } from './QrActions';
 
@@ -28,20 +29,24 @@ export default async function VisitorQrPage() {
     redirect('/onboarding');
   }
 
-  if (!member.current_club_id) {
+  // Directors generate the QR for their own club; admins for whichever club
+  // they've selected in the switcher.
+  const activeClubId = await getActiveClubId(member);
+
+  if (!activeClubId) {
     redirect('/dashboard/visitors');
   }
 
   const { data: club } = await supabase
     .from('clubs')
     .select('name, display_name')
-    .eq('id', member.current_club_id)
+    .eq('id', activeClubId)
     .maybeSingle();
 
   const clubName = club?.display_name || club?.name || 'your club';
 
   const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '');
-  const checkInUrl = `${baseUrl}/visit/${member.current_club_id}`;
+  const checkInUrl = `${baseUrl}/visit/${activeClubId}`;
 
   // Render the QR as crisp inline SVG (prints at any size, no network calls).
   const qrSvg = await QRCode.toString(checkInUrl, {
