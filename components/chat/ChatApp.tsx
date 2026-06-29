@@ -24,6 +24,10 @@ export function ChatApp({ me, initialChannels, directory, initialUnread }: Props
 
   const [channels, setChannels] = useState<ChatChannel[]>(initialChannels);
   const clubChannel = channels.find((c) => c.club_id && c.club_id === me.clubId);
+  // Admins get access to every club's channel; list the rest under "All Clubs".
+  const otherClubChannels = me.isAdmin
+    ? channels.filter((c) => c.club_id && c.club_id !== me.clubId)
+    : [];
   const joinedOpen = channels.filter((c) => !c.club_id && c.joined);
   const browseable = channels.filter((c) => !c.club_id && !c.joined);
 
@@ -410,6 +414,15 @@ export function ChatApp({ me, initialChannels, directory, initialUnread }: Props
                 My Club
               </p>
               {channelButton(clubChannel)}
+            </>
+          )}
+
+          {otherClubChannels.length > 0 && (
+            <>
+              <p className="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                All Clubs
+              </p>
+              {otherClubChannels.map(channelButton)}
             </>
           )}
 

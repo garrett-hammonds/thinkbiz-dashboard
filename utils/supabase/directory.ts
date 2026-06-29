@@ -59,6 +59,17 @@ export async function getChatDirectory(opts: {
 
   const byId = new Map<string, DirectoryMember>();
 
+  // Admins can access every club channel, so they need every active member in
+  // the directory to render names and @mention anyone, anywhere.
+  if (opts.isAdmin) {
+    const { data: allMembers } = await admin
+      .from('members')
+      .select(MEMBER_FIELDS)
+      .eq('is_active', true);
+    for (const m of (allMembers as DirectoryMember[]) || []) byId.set(m.id, m);
+    return Array.from(byId.values()).sort(byName);
+  }
+
   if (opts.clubId) {
     const { data: clubMembers } = await admin
       .from('members')

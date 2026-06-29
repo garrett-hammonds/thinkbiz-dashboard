@@ -60,7 +60,11 @@ export default async function ChatPage() {
     name: c.name,
     description: c.description,
     club_id: c.club_id,
-    joined: c.club_id ? c.club_id === member.current_club_id : joinedIds.has(c.id),
+    // Admins can read/post in every club channel (enforced by RLS), so treat
+    // them as joined everywhere — this drives realtime unread badges below.
+    joined: c.club_id
+      ? member.is_admin || c.club_id === member.current_club_id
+      : joinedIds.has(c.id),
   }));
 
   const unreadCounts: Record<string, number> = {};
