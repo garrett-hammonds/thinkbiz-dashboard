@@ -1,6 +1,8 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
+import { sendEmail } from '@/lib/email/client';
+import { visitorWelcomeEmail } from '@/lib/email/templates';
 
 export interface VisitorFormData {
   clubId: string;
@@ -99,9 +101,11 @@ export async function submitVisitorAction(formData: VisitorFormData) {
     return { success: false, message: 'Something went wrong. Please try again.' };
   }
 
-  // Best-effort: also forward the entry to Formspree so the club gets an email
-  // + dashboard copy. The Supabase row above is the record of truth, so a
-  // Formspree failure must never block a successful check-in.
+  // Best-effort follow-ups. The Supabase row above is the record of truth, so
+  // neither of these may ever block a successful check-in.
+  //   1. Forward the entry to Formspree (gives the club an email/dashboard copy).
+  //   2. Email the visitor a membership intro + invite back to a future meeting.
+  // The club name is shared by both, so we fetch it once.
   try {
     const { data: club } = await supabase
       .from('clubs')
@@ -109,9 +113,23 @@ export async function submitVisitorAction(formData: VisitorFormData) {
       .eq('id', formData.clubId)
       .maybeSingle();
     const clubName = club?.display_name || club?.name || null;
+
     await forwardToFormspree(formData, clubName);
-  } catch (formspreeError) {
-    console.error('[submitVisitor] Formspree forward failed:', formspreeError);
+
+    // Only when the visitor left an email. sendEmail() is itself a no-op when
+    // RESEND_API_KEY / EMAIL_FROM aren't configured, so this is safe either way.
+    const visitorEmail = formData.email.trim();
+    if (visitorEmail) {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+      const welcome = visitorWelcomeEmail({
+        firstName: formData.firstName.trim() || undefined,
+        clubName: clubName || undefined,
+        applyUrl: `${siteUrl}/apply`,
+      });
+      await sendEmail({ to: visitorEmail, ...welcome });
+    }
+  } catch (followUpError) {
+    console.error('[submitVisitor] visitor follow-up failed:', followUpError);
   }
 
   return { success: true };
