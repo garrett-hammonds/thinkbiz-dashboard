@@ -15,12 +15,32 @@ functions, and the RLS policies.
 
 The QR page uses the existing `NEXT_PUBLIC_SITE_URL` to build the public
 check-in URL, so make sure it's set to the live site (e.g.
-`https://app.thinkbiz.solutions`) in production.
+`https://app.thinkbiz.solutions`) in production. `NEXT_PUBLIC_SITE_URL` is also
+used to build the "Learn about membership" link in the visitor welcome email
+(it points at `/apply`).
 
 One **optional** variable: `FORMSPREE_VISITOR_ENDPOINT`. The form always writes
 to the Supabase `visitors` table; when this is set it *also* forwards each entry
 to Formspree for an email/dashboard copy. It defaults to the live Formspree form
 (`https://formspree.io/f/mgojolqz`) when unset, so set it only to repoint it.
+
+The **visitor welcome email** (below) reuses the existing Resend setup — it
+sends only when `RESEND_API_KEY` and `EMAIL_FROM` are configured (the same two
+variables that power approval/invite emails). No new variable is required; if
+those are unset the send is silently skipped and check-in still succeeds.
+
+## Visitor welcome email (membership invite)
+
+When a visitor checks in **and leaves an email address**, they're sent a
+best-effort welcome email (`visitorWelcomeEmail` in `lib/email/templates.ts`,
+fired from `app/visit/[clubId]/submitVisitor.ts`). It introduces ThinkBiz
+membership and its benefits and invites them back to a future meeting, with a
+"Learn about membership" button pointing at `/apply`.
+
+Like the Formspree forward, this is **best-effort**: the `visitors` row is the
+record of truth, so an email failure never blocks a successful check-in. It only
+fires for the in-app check-in path. See §5 to also cover direct inserts (e.g.
+the marketing-site pre-registration form).
 
 ## 3. How it works
 
@@ -59,3 +79,20 @@ await supabase.from('visitors').insert({
 
 `visited_on` defaults to the current date; pass it explicitly if you want the
 meeting date the visitor registered for.
+
+## 5. Sending the welcome email on *every* insert (optional follow-up)
+
+The welcome email currently fires from the in-app check-in action, so direct
+inserts (the pre-registration form in §4) won't trigger it. To send on **any**
+insert into `visitors` regardless of source, move the trigger into the database:
+
+1. Add a Supabase **Database Webhook** on `INSERT` to `public.visitors` that
+   POSTs to an app route (e.g. `/api/visitors/welcome`), guarded by a shared
+   secret header — mirror the existing chat webhook (`CHAT_WEBHOOK_SECRET`).
+2. That route validates the secret, then calls the same `visitorWelcomeEmail`
+   template + `sendEmail()` already used here. Skip rows where `email IS NULL`
+   and, if you want to avoid double-sends, have the in-app action stop sending
+   once the webhook is live (or de-dupe on a `welcomed_at` column).
+
+This keeps the email logic in one template and makes "new visitor enters the
+database" the literal trigger for the email, no matter which form wrote the row.

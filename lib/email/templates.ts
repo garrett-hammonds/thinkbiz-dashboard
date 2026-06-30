@@ -24,10 +24,14 @@ function escapeHtml(value: string): string {
 }
 
 // Shared shell: heading, body paragraphs, and a call-to-action button.
-function layout(opts: { heading: string; paragraphs: string[]; ctaLabel: string; ctaUrl: string }): string {
+// `footer` overrides the default account-settings footnote — used by emails to
+// non-members (e.g. visitors), for whom "notifications on your account" is wrong.
+function layout(opts: { heading: string; paragraphs: string[]; ctaLabel: string; ctaUrl: string; footer?: string }): string {
   const body = opts.paragraphs
     .map((p) => `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#333;">${p}</p>`)
     .join('');
+  const footer = opts.footer
+    ?? `You're receiving this because notifications are enabled on your ${BRAND} account. You can change this anytime in your profile settings.`;
   return `<!DOCTYPE html>
 <html>
   <body style="margin:0;background:#f1f5f9;padding:24px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
@@ -44,7 +48,7 @@ function layout(opts: { heading: string; paragraphs: string[]; ctaLabel: string;
                URL safe inside the href attribute and leaves the encoding intact. -->
           <a href="${escapeHtml(opts.ctaUrl)}" style="display:inline-block;background:${PRIMARY};color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 24px;border-radius:8px;">${escapeHtml(opts.ctaLabel)}</a>
         </p>
-        <p style="margin:28px 0 0;font-size:12px;color:#94a3b8;">You're receiving this because notifications are enabled on your ${BRAND} account. You can change this anytime in your profile settings.</p>
+        <p style="margin:28px 0 0;font-size:12px;color:#94a3b8;">${escapeHtml(footer)}</p>
       </td></tr>
     </table>
   </body>
@@ -154,5 +158,37 @@ export function chatMentionEmail(opts: {
       ctaUrl: opts.url,
     }),
     text: `${opts.authorName} mentioned you in #${opts.channelName}: ${opts.snippet}\n\nOpen chat: ${opts.url}`,
+  };
+}
+
+// Sent to a visitor right after they check in / pre-register. Introduces
+// membership + its benefits and invites them back to a future meeting. The CTA
+// points at the public application page. Non-transactional and best-effort:
+// callers must never let a failure block the check-in (see submitVisitor.ts).
+export function visitorWelcomeEmail(opts: { firstName?: string; clubName?: string; applyUrl: string }): RenderedEmail {
+  const name = opts.firstName ? `, ${opts.firstName}` : '';
+  const club = opts.clubName ? escapeHtml(opts.clubName) : 'our club';
+  return {
+    subject: `Thanks for visiting ${BRAND}`,
+    html: layout({
+      heading: 'Thanks for visiting!',
+      paragraphs: [
+        `It was great having you${escapeHtml(name)} at ${club}. We'd love to see you again at a future meeting.`,
+        `<strong>${BRAND}</strong> is a community of business owners who help each other grow through trusted referrals, weekly accountability, and a supportive network. As a member you get:`,
+        `&bull; A dedicated seat in your club's referral network<br/>` +
+          `&bull; Weekly meetings to build relationships and pass business<br/>` +
+          `&bull; Member directory, group chat, and your activity dashboard<br/>` +
+          `&bull; The accountability and connections to grow your business`,
+        `If that sounds like a fit, you can apply for membership below — and either way, come join us at the next meeting.`,
+      ],
+      ctaLabel: 'Learn about membership',
+      ctaUrl: opts.applyUrl,
+      footer: `You're receiving this because you checked in as a visitor at ${club}. No account is created from this email.`,
+    }),
+    text:
+      `It was great having you${name} at ${opts.clubName || 'our club'}. We'd love to see you again at a future meeting.\n\n` +
+      `${BRAND} is a community of business owners who help each other grow through trusted referrals, weekly accountability, and a supportive network. As a member you get a seat in your club's referral network, weekly meetings, the member directory and chat, and your activity dashboard.\n\n` +
+      `Learn about membership and apply here: ${opts.applyUrl}\n\n` +
+      `Either way, come join us at the next meeting!`,
   };
 }
