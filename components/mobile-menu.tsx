@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { User, LifeBuoy, Menu, X, UserPlus, Shield, ClipboardList, MessageSquare, Users, UserCheck, Rocket } from "lucide-react";
+import { User, LifeBuoy, Menu, X, UserPlus, Shield, ClipboardList, MessageSquare, Users, UserCheck, Rocket, CalendarCheck, QrCode } from "lucide-react";
 import { ClubSwitcher, type SwitcherClub } from "./ClubSwitcher";
 
 export function MobileMenu({ canViewApps, isAdmin, isLoggedIn, chatUnread = 0, switcherClubs = [], activeClubId = null }: { canViewApps: boolean; isAdmin: boolean; isLoggedIn: boolean; chatUnread?: number; switcherClubs?: SwitcherClub[]; activeClubId?: string | null }) {
@@ -77,6 +77,18 @@ export function MobileMenu({ canViewApps, isAdmin, isLoggedIn, chatUnread = 0, s
 
           {canViewApps && (
             <Link
+              href="/dashboard/attendance"
+              className="flex w-full justify-start items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => setIsOpen(false)}
+            >
+              <CalendarCheck className="h-4 w-4" aria-hidden="true" />
+              Attendance
+              <Shield className="h-4 w-4 ml-auto text-primary opacity-70" />
+            </Link>
+          )}
+
+          {canViewApps && (
+            <Link
               href="/dashboard/applications"
               className="flex w-full justify-start items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               onClick={() => setIsOpen(false)}
@@ -95,6 +107,17 @@ export function MobileMenu({ canViewApps, isAdmin, isLoggedIn, chatUnread = 0, s
             >
               <UserCheck className="h-4 w-4" aria-hidden="true" />
               Visitors
+            </Link>
+          )}
+
+          {isLoggedIn && (
+            <Link
+              href="/check-in-code"
+              className="flex w-full justify-start items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => setIsOpen(false)}
+            >
+              <QrCode className="h-4 w-4" aria-hidden="true" />
+              My Check-In Code
             </Link>
           )}
 

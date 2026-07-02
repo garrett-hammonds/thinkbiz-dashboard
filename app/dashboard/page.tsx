@@ -5,13 +5,25 @@ import { getMemberForUser } from '@/utils/supabase/getMember';
 import { getActiveClubId } from '@/utils/activeClub';
 import { membershipGateRedirect } from '@/utils/membership';
 
+import Link from 'next/link';
+
 import { Navbar } from "@/components/navbar";
 import { Scorecards } from "@/components/scorecards";
 import { DashboardCharts } from "@/components/dashboard-charts";
+import { AttendanceSummary, type AttendanceWeekDatum } from "@/components/attendance-summary";
 import DashboardEmptyState from "@/components/DashboardEmptyState";
 import GettingStartedBanner from "@/components/GettingStartedBanner";
 import FlashMessage from "@/components/FlashMessage";
 import type { WeeklyLog, RevenueLog } from "@/lib/types/metrics";
+import {
+  currentMeetingSlot,
+  trailingMeetingSlots,
+  formatSlotTick,
+  MEETING_DAY_LABELS,
+} from '@/utils/meetingWeek';
+
+// How many weekly meetings the attendance trend looks back over.
+const ATTENDANCE_WEEKS = 12;
 
 export default async function DashboardPage({
   searchParams,
@@ -72,6 +84,14 @@ export default async function DashboardPage({
   let clubLogs: WeeklyLog[] = [];
   let clubRevenue: RevenueLog[] = [];
 
+  // Attendance is a director/admin surface (the widgets never render for
+  // regular members). Null data + a known meeting day means "nothing to
+  // chart yet"; a null meeting day prompts setup instead.
+  const canManageAttendance = !!(member.is_admin || member.club_director);
+  let attendanceMeetingDay: number | null = null;
+  let attendanceData: AttendanceWeekDatum[] | null = null;
+  let attendanceRoster = 0;
+
   if (activeClubId) {
     // An admin viewing a club other than their own would be blanked out by the
     // member-scoped RLS on weekly_logs/closed_business_thanks, so route their
@@ -90,6 +110,57 @@ export default async function DashboardPage({
 
     if (clubData) {
       clubName = `${clubData.start_time} ${clubData.display_name}`;
+    }
+
+    if (canManageAttendance && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      // Counting the roster requires reading fellow members' rows, which
+      // member-scoped RLS hides even from directors — same service-role
+      // reasoning as the roster page, and gated to directors/admins above.
+      // meeting_day is queried separately from clubName's query so a
+      // not-yet-applied attendance migration degrades to the setup prompt
+      // instead of blanking the whole club section.
+      const attendanceReader = createAdminClient();
+
+      const { data: meetingDayData } = await attendanceReader
+        .from('clubs')
+        .select('meeting_day')
+        .eq('id', activeClubId)
+        .maybeSingle();
+      attendanceMeetingDay = meetingDayData?.meeting_day ?? null;
+
+      if (attendanceMeetingDay != null) {
+        const slots = trailingMeetingSlots(
+          currentMeetingSlot(attendanceMeetingDay),
+          ATTENDANCE_WEEKS,
+        );
+
+        const [{ count: rosterCount }, { data: attendanceRows }] =
+          await Promise.all([
+            attendanceReader
+              .from('members')
+              .select('id', { count: 'exact', head: true })
+              .eq('is_active', true)
+              .eq('current_club_id', activeClubId),
+            attendanceReader
+              .from('attendance')
+              .select('meeting_date')
+              .eq('club_id', activeClubId)
+              .gte('meeting_date', slots[0]),
+          ]);
+
+        attendanceRoster = rosterCount ?? 0;
+        const presentBySlot = new Map(slots.map((s) => [s, 0]));
+        for (const row of attendanceRows ?? []) {
+          const slot = row.meeting_date as string;
+          if (presentBySlot.has(slot)) {
+            presentBySlot.set(slot, (presentBySlot.get(slot) ?? 0) + 1);
+          }
+        }
+        attendanceData = slots.map((s) => ({
+          date: formatSlotTick(s),
+          present: presentBySlot.get(s) ?? 0,
+        }));
+      }
     }
 
     const clubLogsPromise = clubReader
@@ -156,10 +227,40 @@ export default async function DashboardPage({
             </h2>
             
             <Scorecards logsData={clubLogs} revenueData={clubRevenue} />
-            
+
             <div className="mt-8">
               <DashboardCharts data={clubLogs} revenueData={clubRevenue} />
             </div>
+
+            {canManageAttendance && attendanceData && attendanceMeetingDay != null && (
+              <section aria-label="Meeting attendance" className="mt-12">
+                <h3 className="mb-4 text-sm font-semibold text-muted-foreground">
+                  Meeting attendance · last {ATTENDANCE_WEEKS} weeks
+                </h3>
+                <AttendanceSummary
+                  data={attendanceData}
+                  rosterSize={attendanceRoster}
+                  meetingDayLabel={MEETING_DAY_LABELS[attendanceMeetingDay]}
+                />
+              </section>
+            )}
+
+            {canManageAttendance && attendanceMeetingDay == null && (
+              <section aria-label="Meeting attendance" className="mt-12">
+                <div className="rounded-xl border border-dashed border-gray-300 bg-card p-6">
+                  <p className="text-sm text-muted-foreground">
+                    Track weekly meeting attendance with member check-in QR
+                    codes.{' '}
+                    <Link
+                      href="/dashboard/attendance"
+                      className="font-semibold text-primary transition-colors hover:text-secondary"
+                    >
+                      Set your club&apos;s meeting day to get started →
+                    </Link>
+                  </p>
+                </div>
+              </section>
+            )}
           </div>
         )}
       </main>
