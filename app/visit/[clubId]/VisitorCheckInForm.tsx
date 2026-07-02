@@ -1,7 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { submitVisitorAction } from './submitVisitor';
+import { Turnstile } from '@/components/Turnstile';
+
+const CAPTCHA_ENABLED = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 export function VisitorCheckInForm({
   clubId,
@@ -22,6 +25,8 @@ export function VisitorCheckInForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const onVerify = useCallback((token: string | null) => setCaptchaToken(token), []);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -42,9 +47,13 @@ export function VisitorCheckInForm({
       setError('Please add an email or phone number so the club can reach you.');
       return;
     }
+    if (CAPTCHA_ENABLED && !captchaToken) {
+      setError('Please complete the verification challenge below.');
+      return;
+    }
 
     setIsSubmitting(true);
-    const result = await submitVisitorAction({ clubId, ...formData });
+    const result = await submitVisitorAction({ clubId, ...formData }, captchaToken ?? undefined);
     setIsSubmitting(false);
 
     if (result.success) {
@@ -111,6 +120,8 @@ export function VisitorCheckInForm({
         <label className="block text-sm font-semibold text-gray-900 mb-2">Anything you&apos;re looking for? <span className="text-gray-500 font-normal">(optional)</span></label>
         <textarea name="notes" value={formData.notes} onChange={handleChange} className={`${inputClass} h-24 resize-none`} maxLength={500} />
       </div>
+
+      <Turnstile onVerify={onVerify} />
 
       {error && (
         <p className="text-sm font-medium text-red-600" role="alert">{error}</p>

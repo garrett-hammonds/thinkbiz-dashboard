@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Pencil, Trash2, SmilePlus } from "lucide-react";
 import type { ChatMember, ChatMessage, Me } from "./types";
 import { memberName, REACTION_EMOJIS } from "./types";
+import { ChatImage } from "./ChatImage";
 
 type Props = {
   messages: ChatMessage[];
@@ -231,14 +232,7 @@ export function MessageList({
                       </p>
                     )}
                     {m.image_url && (
-                      <a href={m.image_url} target="_blank" rel="noopener noreferrer">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={m.image_url}
-                          alt="Attachment"
-                          className={`${m.content ? "mt-2 " : ""}max-h-72 max-w-xs rounded-lg object-contain`}
-                        />
-                      </a>
+                      <ChatImage stored={m.image_url} hasContent={!!m.content} />
                     )}
                   </div>
                 )}

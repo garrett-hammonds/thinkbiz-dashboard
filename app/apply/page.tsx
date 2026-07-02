@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { submitApplicationAction } from './submitApplication';
 import { createClient } from '../../utils/supabase/client';
+import { Turnstile } from '@/components/Turnstile';
+
+const CAPTCHA_ENABLED = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 export default function ApplyPage() {
     const [formData, setFormData] = useState({
@@ -20,6 +23,8 @@ export default function ApplyPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [clubs, setClubs] = useState<{ id: string, name: string }[]>([]);
     const [isLoadingClubs, setIsLoadingClubs] = useState(true);
+    const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+    const onVerify = useCallback((token: string | null) => setCaptchaToken(token), []);
 
     useEffect(() => {
         const fetchClubs = async () => {
@@ -63,12 +68,16 @@ export default function ApplyPage() {
 
     const submitApplication = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (CAPTCHA_ENABLED && !captchaToken) {
+            alert('Please complete the verification challenge below.');
+            return;
+        }
+
         setIsSubmitting(true);
 
-        console.log('Received Application:', formData);
+        const result = await submitApplicationAction(formData, captchaToken ?? undefined);
 
-        const result = await submitApplicationAction(formData);
-        
         setIsSubmitting(false);
 
         if (result.success) {
@@ -135,6 +144,7 @@ export default function ApplyPage() {
                             <label className="block text-sm font-semibold text-gray-900 mb-2">Core Skills <span className="text-gray-500 font-normal">(comma separated)</span></label>
                             <input type="text" name="coreSkills" value={formData.coreSkills} onChange={handleChange} className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors" required />
                         </div>
+                        <Turnstile onVerify={onVerify} />
                         <div className="flex space-x-4 pt-4">
                             <button type="button" onClick={handleBack} className="w-full text-primary hover:bg-primary/10 rounded-lg px-4 py-2 font-semibold transition-colors duration-200">Back</button>
                             <button type="submit" disabled={isSubmitting} className="w-full bg-primary text-white hover:bg-secondary rounded-lg px-6 py-3 font-semibold transition-colors duration-200 focus-visible:outline-primary disabled:opacity-50">

@@ -111,9 +111,7 @@ export async function acceptDirectorInvite(
     console.error('[acceptDirectorInvite] inviteUserByEmail failed:', inviteError);
     return {
       success: false,
-      message: inviteError?.message
-        ? `Could not send invite email: ${inviteError.message}`
-        : 'Failed to send invite email. Try again.',
+      message: 'Could not send the invite email. Please try again.',
     };
   } else {
     userId = inviteData.user.id;

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
+import { safeNextPath } from '@/utils/safeRedirect';
 
 // Compatibility landing point for Supabase auth email links. New links we
 // generate now point at /auth/confirm (a button-gated page) instead — see
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
   const errorDescription = params.get('error_description') || params.get('error');
 
   const nextParam = params.get('next');
-  const safeNext = nextParam && nextParam.startsWith('/') ? nextParam : '/dashboard';
+  const safeNext = safeNextPath(nextParam);
 
   const expiredMessage =
     'That sign-in link has expired or was already used. Use "Forgot password" on the login page to get a fresh one.';

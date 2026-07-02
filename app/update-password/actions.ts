@@ -8,8 +8,13 @@ export async function updateUserPassword(formData: FormData) {
   const password = formData.get('password') as string;
   const confirmPassword = formData.get('confirmPassword') as string;
 
-  if (!password || password.length < 6) {
-    redirect('/update-password?message=Password must be at least 6 characters');
+  if (!password || password.length < 8) {
+    redirect('/update-password?message=Password must be at least 8 characters');
+  }
+  // Basic strength check: require a mix so a password isn't just "aaaaaaaa".
+  // Supabase enforces its own project-level rules too; this is the app-side floor.
+  if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+    redirect('/update-password?message=Password must include both letters and numbers');
   }
   if (password !== confirmPassword){
     redirect('/update-password?message=Passwords do not match');

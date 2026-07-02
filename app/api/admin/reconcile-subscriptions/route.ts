@@ -10,10 +10,14 @@ export const dynamic = 'force-dynamic';
 // subscription to its member by email, so pre-existing subscribers (e.g. from
 // GoHighLevel) are marked paid up front and never hit the paywall.
 //
-// Admin-only: just visit this URL while signed in as an admin. Returns a JSON
-// summary including any subscriber emails that didn't match a member (those need
-// a manual look — usually an email mismatch between Stripe and the member row).
-export async function GET() {
+// Admin-only. This MUTATES member rows, so it's a POST (not a GET) — a plain
+// URL visit / prefetch / cross-site image tag must not be able to trigger a
+// backfill. Invoke it with an authenticated POST, e.g.
+// `fetch('/api/admin/reconcile-subscriptions', { method: 'POST' })` from the
+// admin's browser console while signed in. Returns a JSON summary including any
+// subscriber emails that didn't match a member (those need a manual look —
+// usually an email mismatch between Stripe and the member row).
+export async function POST() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

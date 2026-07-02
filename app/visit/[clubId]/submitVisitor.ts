@@ -1,8 +1,13 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 import { sendEmail } from '@/lib/email/client';
 import { visitorWelcomeEmail } from '@/lib/email/templates';
+import { firstLengthError } from '@/utils/validation';
+import { verifyCaptcha } from '@/lib/captcha';
+import { checkRateLimit } from '@/lib/rateLimit';
+import { clientIp } from '@/utils/requestIp';
 
 export interface VisitorFormData {
   clubId: string;
@@ -53,10 +58,22 @@ async function forwardToFormspree(
   });
 }
 
-export async function submitVisitorAction(formData: VisitorFormData) {
+export async function submitVisitorAction(formData: VisitorFormData, captchaToken?: string) {
   if (!formData || !formData.clubId || !formData.firstName.trim()) {
     return { success: false, message: 'Please enter your name.' };
   }
+
+  // Abuse protection for this public, unauthenticated endpoint: a human check
+  // then per-IP and per-email throttling. Both no-op gracefully when their
+  // backing services aren't configured (see lib/captcha, lib/rateLimit).
+  const ip = clientIp(await headers());
+
+  if (!(await verifyCaptcha(captchaToken, ip))) {
+    return { success: false, message: 'Please complete the verification challenge and try again.' };
+  }
+
+  const tooBusy = { success: false, message: 'Too many submissions. Please wait a little and try again.' };
+  if (!(await checkRateLimit(`visitor:ip:${ip}`, 5, '10 m')).ok) return tooBusy;
 
   // A visitor must leave at least one way to be contacted, matching the
   // table's CHECK constraint.
@@ -64,11 +81,28 @@ export async function submitVisitorAction(formData: VisitorFormData) {
     return { success: false, message: 'Please add an email or phone number so the club can reach you.' };
   }
 
-  if (formData.email.trim()) {
+  const trimmedEmail = formData.email.trim().toLowerCase();
+  if (trimmedEmail) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email.trim())) {
+    if (!emailRegex.test(trimmedEmail)) {
       return { success: false, message: 'Please enter a valid email address.' };
     }
+    // Cap check-ins targeting a single email address, so the welcome email
+    // below can't be used to bomb one victim from many IPs.
+    if (!(await checkRateLimit(`visitor:email:${trimmedEmail}`, 3, '1 h')).ok) return tooBusy;
+  }
+
+  const lengthError = firstLengthError([
+    ['First name', formData.firstName, 'name'],
+    ['Last name', formData.lastName, 'name'],
+    ['Email', formData.email, 'email'],
+    ['Phone', formData.phone, 'phone'],
+    ['Company name', formData.companyName, 'shortText'],
+    ['Title', formData.title, 'shortText'],
+    ['Notes', formData.notes, 'longText'],
+  ]);
+  if (lengthError) {
+    return { success: false, message: lengthError };
   }
 
   // Anon client: the check-in form is public (no login), and the visitors
