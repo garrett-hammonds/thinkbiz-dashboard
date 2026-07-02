@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { User, LifeBuoy, Shield, ClipboardList, UserPlus, MessageSquare, Users, UserCheck, Rocket } from "lucide-react";
+import { User, LifeBuoy, Shield, ClipboardList, UserPlus, MessageSquare, Users, UserCheck, Rocket, CalendarCheck, QrCode } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { getMemberForUser } from "@/utils/supabase/getMember";
 import { getSelectedClubId } from "@/utils/activeClub";
@@ -103,6 +103,17 @@ export async function Navbar() {
 
           {canViewApps && (
             <Link
+              href="/dashboard/attendance"
+              className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:inline-flex"
+            >
+              <CalendarCheck className="h-4 w-4" aria-hidden="true" />
+              Attendance
+              <Shield className="inline-block w-3 h-3 ml-1.5 opacity-70" />
+            </Link>
+          )}
+
+          {canViewApps && (
+            <Link
               href="/dashboard/applications"
               className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:inline-flex"
             >
@@ -119,6 +130,16 @@ export async function Navbar() {
             >
               <UserCheck className="h-4 w-4" aria-hidden="true" />
               Visitors
+            </Link>
+          )}
+
+          {user && (
+            <Link
+              href="/check-in-code"
+              className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:inline-flex"
+            >
+              <QrCode className="h-4 w-4" aria-hidden="true" />
+              Check-In
             </Link>
           )}
 

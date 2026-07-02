@@ -12,11 +12,15 @@
 //   visitors  → teal  (#21bdc8) — brand primary
 //   oneOnOnes → mid-teal (#13889a) — a deliberate midpoint on the brand ramp
 //   thanked   → gold  (#f0c808) — brand accent, a warm pop for gratitude
+//   attendance → deep teal (#0d7791) — another point on the same teal→navy
+//                                 ramp (between navy and mid-teal), used by
+//                                 the director-only club attendance widgets
 export const METRIC_COLORS = {
   revenue: '#086788',
   visitors: '#21bdc8',
   oneOnOnes: '#13889a',
   thanked: '#f0c808',
+  attendance: '#0d7791',
 } as const;
 
 // Stroke colors for the chart line/area marks. A scorecard icon is a chunky
@@ -33,4 +37,6 @@ export const METRIC_STROKE_COLORS = {
   visitors: '#0d96a3',
   oneOnOnes: METRIC_COLORS.oneOnOnes,
   thanked: '#a07f00',
+  // Deep teal already clears 3:1 against white as a thin mark.
+  attendance: METRIC_COLORS.attendance,
 } as const;
