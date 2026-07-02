@@ -66,7 +66,8 @@ export async function createChannel(formData: FormData) {
     .single();
 
   if (error || !channel) {
-    return { success: false, message: error?.message || 'Failed to create channel' };
+    if (error) console.error('[createChannel] insert failed:', error);
+    return { success: false, message: 'Failed to create channel' };
   }
 
   // Creator joins their new channel right away

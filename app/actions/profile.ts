@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { firstLengthError } from '@/utils/validation';
 
 export async function logout() {
   const supabase = await createClient();
@@ -39,6 +40,19 @@ export async function updateProfile(formData: FormData) {
     return { success: false, message: 'Please provide valid URLs including http:// or https://' };
   }
 
+  const lengthError = firstLengthError([
+    ['Company name', company_name, 'shortText'],
+    ['Title', title, 'shortText'],
+    ['Bio', bio, 'longText'],
+    ['Website URL', website_url, 'shortText'],
+    ['LinkedIn URL', linkedin_url, 'shortText'],
+    ['Booking calendar URL', booking_calendar_url, 'shortText'],
+    ['Core skills', skillsStr, 'skills'],
+  ]);
+  if (lengthError) {
+    return { success: false, message: lengthError };
+  }
+
   const { data: updatedMember, error } = await supabase
     .from('members')
     .update({
@@ -56,7 +70,8 @@ export async function updateProfile(formData: FormData) {
     .single();
 
   if (error) {
-    return { success: false, message: error.message };
+    console.error('[updateProfile] update failed:', error);
+    return { success: false, message: 'We couldn’t save your profile. Please try again.' };
   }
 
   // Notification preferences ride the same form. A checkbox is present in the

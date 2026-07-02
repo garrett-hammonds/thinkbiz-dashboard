@@ -41,7 +41,7 @@ export async function savePushSubscription(input: SubscriptionInput) {
 
   if (error) {
     console.error('[pushSubscription] upsert failed:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not save notification settings. Please try again.' };
   }
   return { success: true };
 }
@@ -59,7 +59,7 @@ export async function removePushSubscription(endpoint: string) {
 
   if (error) {
     console.error('[pushSubscription] delete failed:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not update notification settings. Please try again.' };
   }
   return { success: true };
 }

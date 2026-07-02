@@ -29,7 +29,11 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  // `imagePath` is the private-bucket object path we persist on the message;
+  // `imagePreview` is a local object URL used only for the composer thumbnail
+  // (the bucket is private, so we can't show it via a public URL).
+  const [imagePath, setImagePath] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [suggestions, setSuggestions] = useState<ChatMember[]>([]);
@@ -114,8 +118,10 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
         .from("chat-images")
         .upload(path, compressed, { contentType: "image/webp" });
       if (uploadError) throw uploadError;
-      const { data } = supabase.storage.from("chat-images").getPublicUrl(path);
-      setImageUrl(data.publicUrl);
+      // Persist the object PATH (not a public URL) — the bucket is private and
+      // the message renderer mints a signed URL on view.
+      setImagePath(path);
+      setImagePreview(URL.createObjectURL(compressed));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to upload image.");
     } finally {
@@ -124,9 +130,15 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
     }
   };
 
+  const clearImage = () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImagePath(null);
+    setImagePreview(null);
+  };
+
   const send = async () => {
     const trimmed = text.trim();
-    if ((!trimmed && !imageUrl) || sending || uploading) return;
+    if ((!trimmed && !imagePath) || sending || uploading) return;
 
     // Swap "@First Last" back to <@uuid> tokens for any mention the user kept
     let content = trimmed;
@@ -142,9 +154,9 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
     setSending(true);
     setError(null);
     try {
-      await onSend(content, imageUrl, mentionIds);
+      await onSend(content, imagePath, mentionIds);
       setText("");
-      setImageUrl(null);
+      clearImage();
       pendingMentions.current = [];
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send message.");
@@ -203,12 +215,12 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
         </div>
       )}
 
-      {imageUrl && (
+      {imagePreview && (
         <div className="mb-2 inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-slate-50 p-1.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={imageUrl} alt="Attachment preview" className="h-14 w-14 rounded object-cover" />
+          <img src={imagePreview} alt="Attachment preview" className="h-14 w-14 rounded object-cover" />
           <button
-            onClick={() => setImageUrl(null)}
+            onClick={clearImage}
             title="Remove attachment"
             className="rounded p-1 text-gray-500 hover:bg-gray-200"
           >
@@ -281,7 +293,7 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
         />
         <button
           onClick={send}
-          disabled={sending || uploading || (!text.trim() && !imageUrl)}
+          disabled={sending || uploading || (!text.trim() && !imagePath)}
           title="Send message"
           className="rounded-lg bg-primary p-2.5 text-white transition-colors hover:bg-secondary disabled:opacity-50"
         >

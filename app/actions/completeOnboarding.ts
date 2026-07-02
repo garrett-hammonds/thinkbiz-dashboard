@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { firstLengthError } from '@/utils/validation';
 
 export interface CompleteOnboardingResult {
   success: boolean;
@@ -46,6 +47,23 @@ export async function completeOnboarding(formData: FormData): Promise<CompleteOn
     return { success: false, message: 'Add at least one core skill.' };
   }
 
+  const lengthError = firstLengthError([
+    ['First name', first_name, 'name'],
+    ['Last name', last_name, 'name'],
+    ['Phone number', phone_number, 'phone'],
+    ['Company name', company_name, 'shortText'],
+    ['Title', title, 'shortText'],
+    ['Bio', bio, 'longText'],
+    ['Short bio', short_bio, 'shortText'],
+    ['Core skills', skillsStr, 'skills'],
+    ['Website URL', website_url, 'shortText'],
+    ['LinkedIn URL', linkedin_url, 'shortText'],
+    ['Booking calendar URL', booking_calendar_url, 'shortText'],
+  ]);
+  if (lengthError) {
+    return { success: false, message: lengthError };
+  }
+
   const isValidUrl = (url: string) => {
     if (!url) return true;
     try { new URL(url); return true; } catch { return false; }
@@ -75,7 +93,7 @@ export async function completeOnboarding(formData: FormData): Promise<CompleteOn
 
   if (error) {
     console.error('[completeOnboarding] update failed:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'We couldn’t save your details. Please try again.' };
   }
 
   revalidatePath('/dashboard');

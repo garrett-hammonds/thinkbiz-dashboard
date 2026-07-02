@@ -33,6 +33,10 @@ export async function verifyDirectorInviteToken(token: string): Promise<Director
   const { payload } = await jwtVerify(token, getSecret(), {
     issuer: ISSUER,
     audience: AUDIENCE,
+    // Pin the accepted algorithm. The signing key is a symmetric secret so
+    // jose already rejects asymmetric algs, but pinning HS256 explicitly closes
+    // the door on any alg-substitution attempt as defense-in-depth.
+    algorithms: ['HS256'],
   });
 
   const email = typeof payload.email === 'string' ? payload.email : null;

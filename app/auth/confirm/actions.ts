@@ -3,6 +3,7 @@
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
+import { safeNextPath } from '@/utils/safeRedirect';
 
 const EXPIRED_MESSAGE =
   'That sign-in link has expired or was already used. Use "Forgot password" on the login page to get a fresh one.';
@@ -18,8 +19,7 @@ const EXPIRED_MESSAGE =
 export async function confirmAuthLink(formData: FormData) {
   const tokenHash = ((formData.get('token_hash') as string | null) ?? '').trim();
   const type = (formData.get('type') as EmailOtpType | null) ?? null;
-  const nextRaw = (formData.get('next') as string | null) ?? '';
-  const next = nextRaw.startsWith('/') ? nextRaw : '/dashboard';
+  const next = safeNextPath(formData.get('next') as string | null);
 
   if (!tokenHash || !type) {
     redirect(`/login?message=${encodeURIComponent(EXPIRED_MESSAGE)}`);
