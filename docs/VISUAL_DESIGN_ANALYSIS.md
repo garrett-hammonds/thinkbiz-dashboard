@@ -3,7 +3,7 @@
 _Date: 2026-06-24_
 
 A Visual Designer review of the app's aesthetic surface: brand-palette fidelity,
-color, elevation/shadow, and consistency against the `GEMINI.md` style guide.
+color, elevation/shadow, and consistency against the `STYLE_GUIDE.md` style guide.
 Where the Service Design pass looked at the journey and the Interaction Design
 pass looked at behavior, this pass looks at how the product _looks_ — and whether
 what's on screen matches the brand system it claims to follow. Records the
@@ -11,7 +11,7 @@ findings, what shipped, and a backlog.
 
 ## 1. How the analysis was framed
 
-`GEMINI.md` is the brand source of truth. Its rules are explicit: a teal /
+`STYLE_GUIDE.md` is the brand source of truth. Its rules are explicit: a teal /
 navy / gold palette, "**Do not guess hex codes — always use the semantic
 Tailwind configuration colors**," navy for "Secondary," and a soft teal-tinted
 `shadow-card` for elevated cards. The review audited the rendered UI against that
@@ -23,7 +23,7 @@ diverged from the documented system.
 
 ### P0 — "Secondary" was mapped to light gray, breaking every primary button's hover (shipped)
 
-`GEMINI.md` defines **Secondary = Navy Blue** and specifies the primary button as
+`STYLE_GUIDE.md` defines **Secondary = Navy Blue** and specifies the primary button as
 `bg-primary … hover:bg-secondary` — i.e. a teal button that **darkens to navy**
 on hover. But `globals.css` mapped `--secondary: #f0f2f5` (a near-white gray).
 The consequences were app-wide and very visible:
@@ -92,7 +92,7 @@ succeeds.
 
 1. **Standardize page-title typography.** Page `<h1>`s vary across the app —
    `text-2xl font-bold tracking-tight` (dashboard, getting-started) vs `text-3xl`
-   (apply, profile) vs `text-4xl font-black` (support). `GEMINI.md` defines a
+   (apply, profile) vs `text-4xl font-black` (support). `STYLE_GUIDE.md` defines a
    single H1–H4 scale; adopting it consistently (ideally via a small `<PageTitle>`
    component) would give every screen the same masthead weight.
 2. **Promote the brand tokens into a documented primitive set.** Two vocabularies
@@ -102,7 +102,7 @@ succeeds.
    stop them drifting.
 3. **Audit destructive styling.** Deny / delete actions use literal `red-600`;
    route them through the existing `--destructive` token for one source of truth.
-4. **Spacing rhythm pass.** `GEMINI.md` prescribes section padding (`py-12 lg:py-16`)
+4. **Spacing rhythm pass.** `STYLE_GUIDE.md` prescribes section padding (`py-12 lg:py-16`)
    and gap scales; a few pages use ad-hoc vertical spacing (`mt-16`, `py-8`). A
    light pass would even out the vertical rhythm between sections.
 5. **Iconography weight + sizing consistency.** Lucide icons appear at `h-3` →
