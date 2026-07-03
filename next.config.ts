@@ -41,7 +41,10 @@ const securityHeaders = [
   { key: 'X-DNS-Prefetch-Control', value: 'off' },
   {
     key: 'Permissions-Policy',
-    value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+    // camera=(self): the attendance QR scanner (/dashboard/attendance/scan)
+    // needs getUserMedia on our own origin; camera=() suppresses the browser's
+    // permission prompt entirely. Embedded third-party content stays blocked.
+    value: 'camera=(self), microphone=(), geolocation=(), interest-cohort=()',
   },
 ];
 
