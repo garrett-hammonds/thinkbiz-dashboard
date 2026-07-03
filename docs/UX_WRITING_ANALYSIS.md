@@ -106,7 +106,7 @@ styling stays correct. `npm run lint` is clean (0 errors; the 3 pre-existing
 1. **Adopt sentence case app-wide.** This pass converted the highest-traffic
    surfaces (log form, apply). The same Title-Case drift exists on other forms
    and headings; a documented "sentence case everywhere except proper nouns"
-   rule plus a sweep would lock the voice in. Worth adding to `GEMINI.md` as the
+   rule plus a sweep would lock the voice in. Worth adding to `CLAUDE.md` as the
    one content rule the style guide currently lacks.
 2. **Humanize the thrown-error strings.** `submitLogAction` / profile / onboarding
    still `throw new Error('User not authenticated')` and `'Member data not

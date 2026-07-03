@@ -79,7 +79,7 @@ the sense that it's one coherent product:
 - **The access-denied recovery page used off-brand blue** (`bg-blue-600`,
   `focus:ring-blue-500`) instead of the teal `primary`. A member who hits a
   permission wall should still feel they're inside ThinkBiz. Switched to the
-  brand primary button and card styling per `GEMINI.md`.
+  brand primary button and card styling per `CLAUDE.md`.
 
 ## 3. What shipped in this pass
 
