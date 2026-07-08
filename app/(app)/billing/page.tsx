@@ -5,7 +5,7 @@ import { getMemberForUser } from '@/utils/supabase/getMember';
 import { logout } from '@/app/actions/profile';
 import { isBillingEnabled } from '@/lib/stripe/client';
 import { reconcileMemberSubscription } from '@/lib/stripe/reconcile';
-import { isMemberPaid } from '@/utils/membership';
+import { isMemberPaid, isPaywallExempt } from '@/utils/membership';
 import CheckoutButton from './CheckoutButton';
 
 const PERKS = [
@@ -30,8 +30,9 @@ export default async function BillingPage({
   // Onboarding still comes first.
   if (!member.profile_completed_at) redirect('/onboarding');
 
-  // Already paid, or billing isn't configured — there's nothing to pay for here.
-  if (isMemberPaid(member) || !isBillingEnabled()) {
+  // Already paid, exempt (admin/director/comped), or billing isn't configured —
+  // there's nothing to pay for here.
+  if (isMemberPaid(member) || isPaywallExempt(member) || !isBillingEnabled()) {
     redirect('/dashboard');
   }
 

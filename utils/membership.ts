@@ -7,6 +7,7 @@ export const ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing'] as const;
 export interface BillableMember {
   is_admin?: boolean | null;
   club_director?: boolean | null;
+  billing_exempt?: boolean | null;
   subscription_status?: string | null;
 }
 
@@ -17,21 +18,31 @@ export function isMemberPaid(member: BillableMember): boolean {
   );
 }
 
+// Members who are never charged and so are never gated behind the paywall,
+// regardless of subscription status:
+//   - admins and club directors/presidents, who run the clubs and aren't billed;
+//   - anyone manually flagged `billing_exempt` in Supabase (comped members,
+//     staff, special cases — see the migration adding the column).
+// These are exactly the members the roster shows as non-billable.
+export function isPaywallExempt(member: BillableMember): boolean {
+  return !!(member.is_admin || member.club_director || member.billing_exempt);
+}
+
 // The single source of truth for the membership paywall. Returns the path to
 // redirect an unpaid member to, or null when they're allowed through.
 //
 // Three groups are never gated:
 //   - everyone, when billing isn't configured yet (isBillingEnabled() === false),
 //     so the app keeps working until you set the Stripe env vars;
-//   - admins and club directors, who run the clubs and need roster/applications
-//     access to chase down unpaid members (and shouldn't be billed themselves);
+//   - paywall-exempt members (admins, club directors/presidents, and anyone
+//     flagged `billing_exempt` in Supabase) — see isPaywallExempt;
 //   - members with an active/trialing subscription.
 //
 // Callers run this AFTER the profile-completion gate, so onboarding still comes
 // first and the member has a profile before they're asked to pay.
 export function membershipGateRedirect(member: BillableMember): string | null {
   if (!isBillingEnabled()) return null;
-  if (member.is_admin || member.club_director) return null;
+  if (isPaywallExempt(member)) return null;
   if (isMemberPaid(member)) return null;
   return '/billing';
 }

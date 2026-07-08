@@ -4,7 +4,7 @@ import { createClient } from '@/utils/supabase/server';
 import { getMemberForUser } from '@/utils/supabase/getMember';
 import { getActiveClubId } from '@/utils/activeClub';
 import { isBillingEnabled } from '@/lib/stripe/client';
-import { isMemberPaid } from '@/utils/membership';
+import { isMemberPaid, isPaywallExempt } from '@/utils/membership';
 import { RosterTable, type RosterRow } from './RosterTable';
 
 export const dynamic = 'force-dynamic';
@@ -102,7 +102,7 @@ export default async function RosterPage() {
       admin
         .from('members')
         .select(
-          'id, first_name, last_name, email, phone_number, company_name, title, member_headshot, is_admin, club_director, auth_user_id, subscription_status',
+          'id, first_name, last_name, email, phone_number, company_name, title, member_headshot, is_admin, club_director, billing_exempt, auth_user_id, subscription_status',
         )
         .eq('is_active', true)
         .eq('current_club_id', activeClubId)
@@ -128,9 +128,10 @@ export default async function RosterPage() {
     isDirector: !!m.club_director,
     isAdmin: !!m.is_admin,
     joined: !!m.auth_user_id && signedInIds.has(m.auth_user_id),
-    // Directors and admins aren't billed, so they have no payment status to
-    // track. Everyone else is "paid" only with an active/trialing subscription.
-    billable: !m.is_admin && !m.club_director,
+    // Directors, admins, and billing-exempt members aren't billed, so they have
+    // no payment status to track. Everyone else is "paid" only with an
+    // active/trialing subscription.
+    billable: !isPaywallExempt(m),
     paid: isMemberPaid(m),
   }));
 

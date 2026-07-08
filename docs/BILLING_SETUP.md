@@ -8,8 +8,12 @@ place; this doc covers the one-time Stripe + env setup to turn it on.
 - **Hard gate after onboarding.** A member sets their password → completes their
   profile (`/onboarding`) → then hits the paywall at `/billing` and can't reach
   the dashboard, chat, logs, or getting-started until their subscription is
-  active. Directors and admins are never gated (they run the clubs and aren't
-  billed). `/profile` stays reachable so a member can always log out.
+  active. Directors/presidents and admins are never gated (they run the clubs
+  and aren't billed monthly). `/profile` stays reachable so a member can always
+  log out.
+- **Manual exemptions.** Any individual member can be waved through without a
+  subscription by setting `members.billing_exempt = true` in Supabase — see
+  "Exempting specific members" below.
 - **One price for everyone.** A single recurring Stripe Price (`STRIPE_PRICE_ID`)
   applies to all members across all clubs.
 - **Feature-flagged.** The gate is a no-op until BOTH `STRIPE_SECRET_KEY` and
@@ -151,6 +155,32 @@ The portal must be turned on once per mode or "Manage membership" will error:
 2. Activate it, and under **Functionality** enable at least: update payment
    method, and (if you want self-serve cancellation) cancel subscriptions.
 3. Save. Do this in **Test** and **Live** modes separately.
+
+## Exempting specific members (turn the paywall off per member)
+
+Some members should never hit the paywall even though billing is on and they
+have no Stripe subscription. Two cases:
+
+- **Directors/presidents and admins** — handled automatically. Any member with
+  `club_director = true` or `is_admin = true` is never gated and never shows a
+  payment status on the roster, because they aren't charged monthly. You don't
+  need to do anything for them.
+- **Anyone else you choose** (comped members, staff, one-off exceptions) — set
+  the `members.billing_exempt` flag to `true` for that member. The
+  `20260708000100_member_billing_exempt.sql` migration adds this column
+  (default `false`). Flip it from the Supabase dashboard:
+  1. **Table editor → `members`**, find the row, tick `billing_exempt` on, save.
+     (Or run `update members set billing_exempt = true where email = '…';` in the
+     **SQL editor**.)
+  2. The member is now treated exactly like a paid member: the gate lets them
+     straight through, `/billing` redirects them to the dashboard, and the roster
+     shows them as non-billable (no Paid/Unpaid badge). Set it back to `false` to
+     re-engage the paywall.
+
+  This is a privileged column: the same trigger that protects `is_admin` /
+  `subscription_status` (`20260702000100`) blocks members from setting
+  `billing_exempt` on their own row via the API, so only a dashboard/SQL editor
+  or service-role change can grant an exemption.
 
 ## Notes
 

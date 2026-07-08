@@ -4,6 +4,7 @@ import ProfileForm from '@/components/profile-form';
 import MembershipCard from '@/components/MembershipCard';
 import { getMemberForUser } from '@/utils/supabase/getMember';
 import { isBillingEnabled } from '@/lib/stripe/client';
+import { isPaywallExempt } from '@/utils/membership';
 import { DEFAULT_PREFS, type NotificationPrefs } from '@/components/NotificationSettings';
 
 export default async function ProfilePage() {
@@ -51,7 +52,7 @@ export default async function ProfilePage() {
           <div className="max-w-3xl mx-auto">
             <MembershipCard
               status={member.subscription_status ?? null}
-              billable={!member.is_admin && !member.club_director}
+              billable={!isPaywallExempt(member)}
               hasCustomer={!!member.stripe_customer_id}
               periodEnd={member.subscription_current_period_end ?? null}
             />
