@@ -13,9 +13,27 @@ function onMembershipPrice(sub: Stripe.Subscription, priceId: string | null): bo
   return sub.items.data.some((item) => item.price.id === priceId);
 }
 
-// Finds an existing active/trialing membership subscription for an email on the
-// same Stripe account. This is how we recognize members who were ALREADY paying
-// (e.g. subscribed via GoHighLevel) without asking them to subscribe again.
+// Picks the subscription that should mark a member paid out of a customer's subs.
+// Prefers one on the configured membership price, but falls back to ANY active or
+// trialing subscription — matching the webhook (syncSubscriptionToMember), which
+// marks a member paid off any active subscription regardless of price.
+//
+// The fallback is what keeps pre-existing subscribers out of the paywall. Members
+// imported from GoHighLevel (or otherwise subscribed before the in-app checkout
+// existed) sit on a LEGACY price, not STRIPE_PRICE_ID. Requiring the exact price
+// here would wrongly gate them even though they are actively paying — the very
+// people this reconciliation is meant to recognize.
+function pickMembershipSubscription(
+  subs: Stripe.Subscription[],
+  priceId: string | null,
+): Stripe.Subscription | null {
+  const active = subs.filter((s) => isActive(s.status));
+  return active.find((s) => onMembershipPrice(s, priceId)) ?? active[0] ?? null;
+}
+
+// Finds an existing active/trialing subscription for an email on the same Stripe
+// account. This is how we recognize members who were ALREADY paying (e.g.
+// subscribed via GoHighLevel) without asking them to subscribe again.
 export async function findActiveSubscriptionForEmail(
   email: string,
 ): Promise<Stripe.Subscription | null> {
@@ -28,7 +46,7 @@ export async function findActiveSubscriptionForEmail(
     const customers = await stripe.customers.list({ email: email.trim(), limit: 100 });
     for (const customer of customers.data) {
       const subs = await stripe.subscriptions.list({ customer: customer.id, status: 'all', limit: 100 });
-      const match = subs.data.find((s) => isActive(s.status) && onMembershipPrice(s, priceId));
+      const match = pickMembershipSubscription(subs.data, priceId);
       if (match) return match;
     }
   } catch (err) {
@@ -57,20 +75,39 @@ export interface BackfillResult {
   unmatchedEmails: string[];
 }
 
-// One-time backfill: walk every active membership subscription on the account
-// and link each to its member by email. Lets you flip the paywall on for
-// everyone at once without anyone being wrongly gated. Safe to re-run.
+// One-time backfill: walk every active/trialing subscription on the account and
+// link each to its member by email. Lets you flip the paywall on for everyone at
+// once without anyone being wrongly gated. Safe to re-run.
+//
+// This scans ALL active subscriptions, not just those on STRIPE_PRICE_ID, so
+// pre-existing subscribers on a legacy/GoHighLevel price are linked too — same
+// reasoning as pickMembershipSubscription above. A member on multiple active
+// subscriptions is linked to whichever the price preference selects.
 export async function reconcileAllSubscriptions(): Promise<BackfillResult> {
   const stripe = getStripe();
   const priceId = getMembershipPriceId();
   const result: BackfillResult = { scanned: 0, linked: 0, unmatchedEmails: [] };
-  if (!stripe || !priceId) return result;
+  if (!stripe) return result;
 
   const admin = createAdminClient();
 
-  for await (const sub of stripe.subscriptions.list({ price: priceId, status: 'active', limit: 100 })) {
+  // Group each customer's active subscriptions so we apply the same price
+  // preference the lazy reconcile uses, instead of whichever page ordering hands
+  // us first.
+  const subsByCustomer = new Map<string, Stripe.Subscription[]>();
+  for (const status of ['active', 'trialing'] as const) {
+    for await (const sub of stripe.subscriptions.list({ status, limit: 100 })) {
+      const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
+      const list = subsByCustomer.get(customerId);
+      if (list) list.push(sub);
+      else subsByCustomer.set(customerId, [sub]);
+    }
+  }
+
+  for (const [customerId, subs] of subsByCustomer) {
+    const sub = pickMembershipSubscription(subs, priceId);
+    if (!sub) continue;
     result.scanned += 1;
-    const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
 
     let email: string | null = null;
     try {
