@@ -1,0 +1,92 @@
+import { redirect } from 'next/navigation';
+import { createClient } from '@/utils/supabase/server';
+import { getMemberForUser } from '@/utils/supabase/getMember';
+import { membershipGateRedirect } from '@/utils/membership';
+import { getChatDirectory } from '@/utils/supabase/directory';
+
+import { ChatApp } from '@/components/chat/ChatApp';
+import type { ChatChannel, ChatMember, Me } from '@/components/chat/types';
+
+export default async function ChatPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/login');
+  }
+
+  const member = await getMemberForUser(supabase, user);
+
+  if (!member) {
+    redirect('/access-denied');
+  }
+
+  if (!member.profile_completed_at) {
+    redirect('/onboarding');
+  }
+
+  const gate = membershipGateRedirect(member);
+  if (gate) {
+    redirect(gate);
+  }
+
+  const [
+    { data: channelsData },
+    { data: membershipsData },
+    directoryData,
+    { data: unreadData },
+  ] = await Promise.all([
+    supabase
+      .from('chat_channels')
+      .select('id, name, description, club_id')
+      .order('name'),
+    supabase
+      .from('chat_channel_members')
+      .select('channel_id')
+      .eq('member_id', member.id),
+    getChatDirectory({
+      memberId: member.id,
+      clubId: member.current_club_id,
+      isAdmin: !!member.is_admin,
+    }),
+    supabase.rpc('chat_unread_counts'),
+  ]);
+
+  const joinedIds = new Set((membershipsData || []).map((m) => m.channel_id as string));
+
+  const channels: ChatChannel[] = (channelsData || []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    description: c.description,
+    club_id: c.club_id,
+    // Admins can read/post in every club channel (enforced by RLS), so treat
+    // them as joined everywhere — this drives realtime unread badges below.
+    joined: c.club_id
+      ? member.is_admin || c.club_id === member.current_club_id
+      : joinedIds.has(c.id),
+  }));
+
+  const unreadCounts: Record<string, number> = {};
+  for (const row of (unreadData as { channel_id: string; unread: number }[] | null) || []) {
+    unreadCounts[row.channel_id] = Number(row.unread);
+  }
+
+  const me: Me = {
+    memberId: member.id,
+    authUserId: user.id,
+    clubId: member.current_club_id,
+    isAdmin: !!member.is_admin,
+    isDirector: !!member.club_director,
+  };
+
+  return (
+    <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 overflow-hidden px-0 sm:px-6 lg:px-8 sm:py-4">
+      <ChatApp
+        me={me}
+        initialChannels={channels}
+        directory={directoryData as ChatMember[]}
+        initialUnread={unreadCounts}
+      />
+    </main>
+  );
+}

@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { Navbar } from '@/components/navbar';
 import SubmitButton from '@/components/SubmitButton';
 import { resetPassword } from './actions';
 
@@ -12,7 +11,6 @@ export default async function ForgotPasswordPage({
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Navbar />
       <main className="flex flex-1 items-center justify-center p-4">
         <div className="w-full max-w-sm bg-white rounded-xl border border-gray-100 shadow-card p-8">
           <h1 className="text-3xl font-bold leading-snug text-foreground text-center mb-2">
