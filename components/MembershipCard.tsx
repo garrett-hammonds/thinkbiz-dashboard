@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Loader2, CreditCard, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
-import { createBillingPortalSession } from '@/app/billing/actions';
+import { createBillingPortalSession } from '@/app/(app)/billing/actions';
 
 interface MembershipCardProps {
   status: string | null;
