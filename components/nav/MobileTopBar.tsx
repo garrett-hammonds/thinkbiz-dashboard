@@ -4,8 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { Menu } from "lucide-react";
 
-// Slim top bar shown below `md`. The sidebar itself lives off-canvas in a
+// Slim top bar shown below `lg`. The sidebar itself lives off-canvas in a
 // drawer; this bar just carries the brand and the hamburger that opens it.
+// The breakpoint is `lg` (not `md`) so tablets and any narrow/zoomed-out
+// viewport keep the hamburger rather than a persistent 16rem rail squeezing
+// the content column.
 export function MobileTopBar({
   onOpen,
   isOpen,
@@ -16,7 +19,7 @@ export function MobileTopBar({
   chatUnread: number;
 }) {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-card px-4 md:hidden">
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
       <Link
         href="/dashboard"
         className="flex items-center transition-opacity hover:opacity-80"
