@@ -218,8 +218,8 @@ export default async function DashboardPage({
         )}
 
         {activeClubId && (
-          <div className="mt-16 border-t border-gray-200 pt-12">
-            <h2 className="text-3xl font-bold leading-snug text-foreground mb-8">
+          <div className="mt-12 border-t border-gray-200 pt-10 sm:mt-16 sm:pt-12">
+            <h2 className="mb-8 text-2xl font-bold leading-snug text-foreground sm:text-3xl">
               Club stats for {clubName}
             </h2>
             

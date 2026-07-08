@@ -16,6 +16,11 @@ const COLLAPSE_COOKIE = "tb_sidebar_collapsed";
 // icon rail) plus a mobile top bar + off-canvas drawer, wrapped around the
 // routed page content. Rendered once by app/(app)/layout.tsx so its collapse
 // and drawer state survive navigation between authed routes.
+//
+// The desktop rail only appears at `lg` (>=1024px). Below that — phones,
+// tablets, and any browser reporting a narrow/desktop-fallback viewport (e.g.
+// an in-app webview or a phone that renders at ~980px) — the sidebar collapses
+// into the hamburger drawer so the content is never squeezed behind a rail.
 export function AppShell({
   children,
   initialCollapsed,
@@ -52,11 +57,11 @@ export function AppShell({
   };
 
   return (
-    <div className="md:flex md:items-start">
+    <div className="lg:flex lg:items-start">
       {/* Desktop sidebar */}
       <aside
         className={[
-          "sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-border bg-card md:flex",
+          "sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-border bg-card lg:flex",
           collapsed ? "w-16" : "w-64",
         ].join(" ")}
       >
