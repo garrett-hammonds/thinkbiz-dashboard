@@ -184,10 +184,10 @@ export default async function DashboardPage({
   return (
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground lg:text-2xl">
             {member ? `Welcome back, ${member.first_name}` : 'Dashboard'}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-base text-muted-foreground lg:text-sm">
             Your ThinkBiz performance at a glance.
           </p>
         </div>
@@ -209,7 +209,7 @@ export default async function DashboardPage({
             </section>
 
             <section aria-label="Monthly trends" className="mb-8">
-              <h2 className="mb-4 text-sm font-semibold text-muted-foreground">
+              <h2 className="mb-4 text-base font-semibold text-muted-foreground lg:text-sm">
                 Monthly trends · last 12 months
               </h2>
               <DashboardCharts data={logs} revenueData={revenue} />
@@ -231,7 +231,7 @@ export default async function DashboardPage({
 
             {canManageAttendance && attendanceData && attendanceMeetingDay != null && (
               <section aria-label="Meeting attendance" className="mt-12">
-                <h3 className="mb-4 text-sm font-semibold text-muted-foreground">
+                <h3 className="mb-4 text-base font-semibold text-muted-foreground lg:text-sm">
                   Meeting attendance · last {ATTENDANCE_WEEKS} weeks
                 </h3>
                 <AttendanceSummary

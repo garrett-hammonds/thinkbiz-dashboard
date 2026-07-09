@@ -61,20 +61,20 @@ export function AttendanceSummary({
             <CalendarCheck className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-muted-foreground">
+            <p className="text-base font-medium text-muted-foreground lg:text-sm">
               This week&apos;s attendance
             </p>
-            <p className="mt-1 text-2xl font-bold tracking-tight text-card-foreground">
+            <p className="mt-1 text-3xl font-bold tracking-tight text-card-foreground lg:text-2xl">
               {thisWeek} of {rosterSize}
             </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="mt-0.5 text-sm text-muted-foreground lg:text-xs">
               {rate}% of active members · meets {meetingDayLabel}s
             </p>
           </div>
         </div>
         <Link
           href="/dashboard/attendance"
-          className="text-sm font-semibold text-primary transition-colors hover:text-secondary"
+          className="text-base font-semibold text-primary transition-colors hover:text-secondary lg:text-sm"
         >
           Manage attendance →
         </Link>
@@ -82,10 +82,10 @@ export function AttendanceSummary({
 
       <div className="rounded-xl border border-gray-100 bg-card p-5 shadow-card lg:col-span-2">
         <div className="mb-1 flex items-baseline justify-between gap-2">
-          <h3 className="text-sm font-semibold text-card-foreground">
+          <h3 className="text-base font-semibold text-card-foreground lg:text-sm">
             Attendance by Week
           </h3>
-          <span className="text-xs font-medium text-muted-foreground">
+          <span className="text-sm font-medium text-muted-foreground lg:text-xs">
             last {data.length} meetings
           </span>
         </div>
@@ -109,13 +109,13 @@ export function AttendanceSummary({
               />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }}
+                tick={{ fontSize: "0.75rem", fill: "var(--color-muted-foreground)" }}
                 axisLine={{ stroke: "var(--color-border)" }}
                 tickLine={false}
                 minTickGap={8}
               />
               <YAxis
-                tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }}
+                tick={{ fontSize: "0.75rem", fill: "var(--color-muted-foreground)" }}
                 axisLine={false}
                 tickLine={false}
                 width={40}
@@ -129,7 +129,7 @@ export function AttendanceSummary({
                   backgroundColor: "var(--color-card)",
                   border: "1px solid var(--color-border)",
                   borderRadius: "8px",
-                  fontSize: "13px",
+                  fontSize: "0.85rem",
                   boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
                 }}
                 formatter={(value: number) => [
@@ -147,7 +147,7 @@ export function AttendanceSummary({
                   label={{
                     value: `avg ${Math.round(average)}`,
                     position: "insideTopRight",
-                    fontSize: 10,
+                    fontSize: "0.65rem",
                     fill: "var(--color-muted-foreground)",
                   }}
                 />
