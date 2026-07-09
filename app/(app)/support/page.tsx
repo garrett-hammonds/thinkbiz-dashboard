@@ -11,7 +11,7 @@ export default function SupportPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl mx-auto">
           {/* Email Card */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-card p-8 text-center transition-all duration-200 hover:shadow-card-hover hover:-translate-y-[2px]">
             <div className="flex justify-center mb-4">

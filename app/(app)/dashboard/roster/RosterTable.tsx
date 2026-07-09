@@ -85,7 +85,7 @@ export function RosterTable({ rows, showPayment = false }: { rows: RosterRow[]; 
   return (
     <div className="flex flex-col gap-6">
       {/* Summary scorecards */}
-      <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${showPayment ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
+      <div className={`grid grid-cols-1 gap-4 ${showPayment ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
         <SummaryCard
           label="Active members"
           value={rows.length}
@@ -119,7 +119,7 @@ export function RosterTable({ rows, showPayment = false }: { rows: RosterRow[]; 
       </div>
 
       {/* Controls */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap gap-2">
           {tabs.map((t) => (
             <button
@@ -144,7 +144,7 @@ export function RosterTable({ rows, showPayment = false }: { rows: RosterRow[]; 
           ))}
         </div>
 
-        <div className="relative w-full sm:w-72">
+        <div className="relative w-full lg:w-72">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
@@ -190,8 +190,8 @@ export function RosterTable({ rows, showPayment = false }: { rows: RosterRow[]; 
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-card">
-          {/* Desktop table */}
-          <table className="hidden w-full text-left md:table">
+          {/* Desktop table — swaps to cards below `lg` to match AppShell's mobile breakpoint */}
+          <table className="hidden w-full text-left lg:table">
             <thead>
               <tr className="border-b border-gray-100 text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <th className="px-6 py-3">Member</th>
@@ -263,7 +263,7 @@ export function RosterTable({ rows, showPayment = false }: { rows: RosterRow[]; 
           </table>
 
           {/* Mobile cards */}
-          <div className="divide-y divide-gray-50 md:hidden">
+          <div className="divide-y divide-gray-50 lg:hidden">
             {filtered.map((r) => (
               <div key={r.id} className="flex flex-col gap-3 p-4">
                 <div className="flex items-start justify-between gap-3">
