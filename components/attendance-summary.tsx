@@ -109,16 +109,16 @@ export function AttendanceSummary({
               />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: "0.75rem", fill: "var(--color-muted-foreground)" }}
+                tick={{ fontSize: "0.8rem", fill: "var(--color-muted-foreground)" }}
                 axisLine={{ stroke: "var(--color-border)" }}
                 tickLine={false}
                 minTickGap={8}
               />
               <YAxis
-                tick={{ fontSize: "0.75rem", fill: "var(--color-muted-foreground)" }}
+                tick={{ fontSize: "0.8rem", fill: "var(--color-muted-foreground)" }}
                 axisLine={false}
                 tickLine={false}
-                width={48}
+                width={52}
                 allowDecimals={false}
                 // Pin the axis to roster size so a full house visually reads
                 // as a full chart, not an arbitrary local maximum.
@@ -147,7 +147,7 @@ export function AttendanceSummary({
                   label={{
                     value: `avg ${Math.round(average)}`,
                     position: "insideTopRight",
-                    fontSize: "0.65rem",
+                    fontSize: "0.7rem",
                     fill: "var(--color-muted-foreground)",
                   }}
                 />

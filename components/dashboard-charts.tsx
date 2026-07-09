@@ -122,17 +122,17 @@ function MetricChart({ title, dataKey, color, strokeColor, chartData, formatAsCu
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: "0.75rem", fill: "var(--color-muted-foreground)" }}
+              tick={{ fontSize: "0.8rem", fill: "var(--color-muted-foreground)" }}
               axisLine={{ stroke: "var(--color-border)" }}
               tickLine={false}
               minTickGap={8}
             />
             <YAxis
-              tick={{ fontSize: "0.75rem", fill: "var(--color-muted-foreground)" }}
+              tick={{ fontSize: "0.8rem", fill: "var(--color-muted-foreground)" }}
               axisLine={false}
               tickLine={false}
               tickFormatter={formatAxis}
-              width={formatAsCurrency ? 68 : 48}
+              width={formatAsCurrency ? 76 : 52}
               allowDecimals={false}
             />
             <Tooltip
@@ -155,7 +155,7 @@ function MetricChart({ title, dataKey, color, strokeColor, chartData, formatAsCu
                 label={{
                   value: `avg ${formatValue(Math.round(average))}`,
                   position: "insideTopRight",
-                  fontSize: "0.65rem",
+                  fontSize: "0.7rem",
                   fill: "var(--color-muted-foreground)",
                 }}
               />
