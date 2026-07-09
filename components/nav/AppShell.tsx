@@ -134,8 +134,15 @@ export function AppShell({
         </div>
       </aside>
 
-      {/* Content column */}
-      <div className="flex min-h-dvh w-full min-w-0 flex-col bg-background">
+      {/* Content column. Pages render a `<main className="mx-auto max-w-... ">`
+          directly here; because this column is a flex container, a child with
+          auto horizontal margins (mx-auto) would shrink to its content width
+          and float in the middle of wide viewports instead of filling to its
+          max-width. `[&>main]:w-full` forces the page main to fill the column
+          (still capped by its own max-w-* and centered beyond it), so content
+          spans the screen on tablets and any zoomed-out/desktop-fallback
+          viewport rather than collapsing into a narrow, tiny column. */}
+      <div className="flex min-h-dvh w-full min-w-0 flex-col bg-background [&>main]:w-full">
         <MobileTopBar
           onOpen={() => setDrawerOpen(true)}
           isOpen={drawerOpen}
