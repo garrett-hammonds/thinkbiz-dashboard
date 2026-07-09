@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import type { WeeklyLog, RevenueLog, MonthlyChartDatum } from "@/lib/types/metrics";
 import { METRIC_COLORS, METRIC_STROKE_COLORS } from "@/lib/chartColors";
+import { useBelowLg } from "@/lib/useBelowLg";
 
 interface DashboardChartsProps {
   data: WeeklyLog[];
@@ -69,6 +70,9 @@ interface MetricChartProps {
 }
 
 function MetricChart({ title, dataKey, color, strokeColor, chartData, formatAsCurrency }: MetricChartProps) {
+  // Wider axis gutters below lg so the scaled-up mobile tick labels
+  // (see globals.css) aren't clipped; desktop keeps its original geometry.
+  const belowLg = useBelowLg();
   // Counts get thousands separators too (1,234 — not 1234) so a busy month
   // reads cleanly; currency uses a compact axis ($1.2K) but full value in tip.
   const formatValue = (value: number) =>
@@ -106,7 +110,7 @@ function MetricChart({ title, dataKey, color, strokeColor, chartData, formatAsCu
           {formatValue(total)} total
         </span>
       </div>
-      <div className="h-64 lg:h-56" role="img" aria-label={summary}>
+      <div className="h-72 lg:h-56" role="img" aria-label={summary}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={chartData}
@@ -122,17 +126,17 @@ function MetricChart({ title, dataKey, color, strokeColor, chartData, formatAsCu
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: "0.8rem", fill: "var(--color-muted-foreground)" }}
+              tick={{ fill: "var(--color-muted-foreground)" }}
               axisLine={{ stroke: "var(--color-border)" }}
               tickLine={false}
               minTickGap={8}
             />
             <YAxis
-              tick={{ fontSize: "0.8rem", fill: "var(--color-muted-foreground)" }}
+              tick={{ fill: "var(--color-muted-foreground)" }}
               axisLine={false}
               tickLine={false}
               tickFormatter={formatAxis}
-              width={formatAsCurrency ? 76 : 52}
+              width={formatAsCurrency ? (belowLg ? 84 : 52) : (belowLg ? 56 : 40)}
               allowDecimals={false}
             />
             <Tooltip
@@ -140,7 +144,7 @@ function MetricChart({ title, dataKey, color, strokeColor, chartData, formatAsCu
                 backgroundColor: "var(--color-card)",
                 border: "1px solid var(--color-border)",
                 borderRadius: "8px",
-                fontSize: "0.85rem",
+                fontSize: "0.9rem",
                 boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
               }}
               formatter={(value: number) => [formatValue(value), title]}
@@ -155,7 +159,6 @@ function MetricChart({ title, dataKey, color, strokeColor, chartData, formatAsCu
                 label={{
                   value: `avg ${formatValue(Math.round(average))}`,
                   position: "insideTopRight",
-                  fontSize: "0.7rem",
                   fill: "var(--color-muted-foreground)",
                 }}
               />

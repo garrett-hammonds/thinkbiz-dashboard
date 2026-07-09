@@ -95,6 +95,26 @@
   }
 }
 
+/* Recharts text. Sized here rather than via per-chart tick props so the
+   mobile scale-up below lg leaves desktop charts exactly as they are:
+   desktop keeps 12px ticks, while below lg ticks land in the 14-15px
+   secondary-text band on a standard phone (and scale further with the
+   fluid root size on wide-viewport phones). */
+.recharts-cartesian-axis-tick text {
+  font-size: 0.75rem;
+}
+.recharts-reference-line text {
+  font-size: 0.65rem;
+}
+@media (max-width: 1023px) {
+  .recharts-cartesian-axis-tick text {
+    font-size: 0.875rem;
+  }
+  .recharts-reference-line text {
+    font-size: 0.8rem;
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
