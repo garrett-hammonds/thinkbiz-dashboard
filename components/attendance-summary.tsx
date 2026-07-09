@@ -89,7 +89,7 @@ export function AttendanceSummary({
             last {data.length} meetings
           </span>
         </div>
-        <div className="h-56" role="img" aria-label={summary}>
+        <div className="h-64 lg:h-56" role="img" aria-label={summary}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={data}
@@ -118,7 +118,7 @@ export function AttendanceSummary({
                 tick={{ fontSize: "0.75rem", fill: "var(--color-muted-foreground)" }}
                 axisLine={false}
                 tickLine={false}
-                width={40}
+                width={48}
                 allowDecimals={false}
                 // Pin the axis to roster size so a full house visually reads
                 // as a full chart, not an arbitrary local maximum.

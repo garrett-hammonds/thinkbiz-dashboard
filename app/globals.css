@@ -84,12 +84,12 @@
    out at a wide viewport (in-app webviews, "Desktop site" mode, large display
    settings) and then shrink them to fit the screen — at ~900-980px a
    16px-root UI reads tiny. A ~390px phone resolves to ~16px (unchanged);
-   ~768px to ~19px; ~980px to ~21px. Tailwind's breakpoints are evaluated
+   ~768px to ~21.5px; ~980px to ~25px. Tailwind's breakpoints are evaluated
    against the initial font size, not this override, so `sm:`/`md:`/`lg:`
    variants are unaffected. Desktop (>=1024px, sidebar visible) stays 16px. */
 @media (max-width: 1023px) {
   html {
-    font-size: clamp(16px, 12.75px + 0.8125vw, 21px);
+    font-size: clamp(16px, 10px + 1.5vw, 25px);
   }
 }
 

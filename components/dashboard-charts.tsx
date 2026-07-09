@@ -106,7 +106,7 @@ function MetricChart({ title, dataKey, color, strokeColor, chartData, formatAsCu
           {formatValue(total)} total
         </span>
       </div>
-      <div className="h-56" role="img" aria-label={summary}>
+      <div className="h-64 lg:h-56" role="img" aria-label={summary}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={chartData}
@@ -132,7 +132,7 @@ function MetricChart({ title, dataKey, color, strokeColor, chartData, formatAsCu
               axisLine={false}
               tickLine={false}
               tickFormatter={formatAxis}
-              width={formatAsCurrency ? 52 : 40}
+              width={formatAsCurrency ? 68 : 48}
               allowDecimals={false}
             />
             <Tooltip
