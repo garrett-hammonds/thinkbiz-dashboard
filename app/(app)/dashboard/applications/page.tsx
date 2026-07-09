@@ -65,7 +65,7 @@ export default async function ApplicationsPage() {
         {!applications || applications.length === 0 ? (
           <p className="text-muted-foreground">No pending applications</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {applications.map((app) => (
               <div 
                 key={app.id} 

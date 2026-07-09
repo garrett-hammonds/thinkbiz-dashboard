@@ -387,12 +387,16 @@ export function ChatApp({ me, initialChannels, directory, initialUnread }: Props
   );
 
   return (
-    <div className="flex w-full flex-1 overflow-hidden bg-white sm:rounded-xl sm:border sm:border-gray-100 sm:shadow-card">
+    // The two-pane split (and the card chrome) must kick in at the same
+    // breakpoint as AppShell's desktop rail (`lg`): below that the app is in
+    // mobile mode — including phones/webviews that report a ~980px
+    // desktop-fallback viewport — so chat shows one full-width pane at a time.
+    <div className="flex w-full flex-1 overflow-hidden bg-white lg:rounded-xl lg:border lg:border-gray-100 lg:shadow-card">
       {/* Sidebar */}
       <aside
         className={`${
           mobileView === "list" ? "flex" : "hidden"
-        } w-full flex-col border-r border-gray-100 bg-slate-50 md:flex md:w-64 md:shrink-0`}
+        } w-full flex-col border-r border-gray-100 bg-slate-50 lg:flex lg:w-64 lg:shrink-0`}
       >
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
           <h2 className="text-base font-bold text-foreground">Member Chat</h2>
@@ -446,14 +450,14 @@ export function ChatApp({ me, initialChannels, directory, initialUnread }: Props
 
       {/* Conversation pane */}
       <section
-        className={`${mobileView === "chat" ? "flex" : "hidden"} min-w-0 flex-1 flex-col md:flex`}
+        className={`${mobileView === "chat" ? "flex" : "hidden"} min-w-0 flex-1 flex-col lg:flex`}
       >
         {activeChannel ? (
           <>
             <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3">
               <button
                 onClick={() => setMobileView("list")}
-                className="mr-1 rounded-lg p-1 text-gray-500 hover:bg-muted md:hidden"
+                className="mr-1 rounded-lg p-1.5 text-gray-500 hover:bg-muted lg:hidden"
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
