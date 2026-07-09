@@ -251,7 +251,10 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
         </>
       )}
 
-      <div className="flex items-end gap-2">
+      {/* Mobile sizing follows the platform messaging apps the members are used
+          to (tall rounded pill, base-size text, big round send button); lg:
+          reverts to the compact desktop composer. */}
+      <div className="flex items-end gap-1.5 lg:gap-2">
         <input
           ref={fileInputRef}
           type="file"
@@ -266,18 +269,18 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
           title="Attach image"
-          className="rounded-lg p-2.5 text-gray-500 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+          className="rounded-full p-3 text-gray-500 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50 lg:rounded-lg lg:p-2.5"
         >
-          <ImagePlus className="h-5 w-5" />
+          <ImagePlus className="h-6 w-6 lg:h-5 lg:w-5" />
         </button>
         <button
           onClick={() => setShowEmoji((v) => !v)}
           title="Add emoji"
-          className={`rounded-lg p-2.5 transition-colors hover:bg-muted hover:text-foreground ${
+          className={`rounded-full p-3 transition-colors hover:bg-muted hover:text-foreground lg:rounded-lg lg:p-2.5 ${
             showEmoji ? "bg-muted text-foreground" : "text-gray-500"
           }`}
         >
-          <Smile className="h-5 w-5" />
+          <Smile className="h-6 w-6 lg:h-5 lg:w-5" />
         </button>
         <textarea
           ref={textareaRef}
@@ -289,15 +292,15 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
           onKeyDown={handleKeyDown}
           rows={1}
           placeholder={uploading ? "Uploading image…" : `Message ${channelName}`}
-          className="max-h-40 min-h-[44px] flex-1 resize-y rounded-lg border border-gray-200 px-3 py-2.5 text-sm leading-relaxed focus:border-primary focus:outline-none"
+          className="max-h-40 min-h-[3.25rem] flex-1 resize-none rounded-3xl border border-gray-300 px-4 py-3.5 text-base leading-relaxed focus:border-primary focus:outline-none lg:min-h-[44px] lg:resize-y lg:rounded-lg lg:border-gray-200 lg:px-3 lg:py-2.5 lg:text-sm"
         />
         <button
           onClick={send}
           disabled={sending || uploading || (!text.trim() && !imagePath)}
           title="Send message"
-          className="rounded-lg bg-primary p-2.5 text-white transition-colors hover:bg-secondary disabled:opacity-50"
+          className="rounded-full bg-primary p-3.5 text-white transition-colors hover:bg-secondary disabled:opacity-50 lg:rounded-lg lg:p-2.5"
         >
-          <Send className="h-5 w-5" />
+          <Send className="h-6 w-6 lg:h-5 lg:w-5" />
         </button>
       </div>
     </div>

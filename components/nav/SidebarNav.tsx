@@ -200,11 +200,12 @@ export function SidebarNav({
               )}
 
               {showClubSwitcher && (
-                <div className="mb-2 px-1">
+                <div className={large ? "mb-3 px-3" : "mb-2 px-1"}>
                   <ClubSwitcher
                     clubs={switcherClubs}
                     activeClubId={activeClubId}
                     className="w-full"
+                    large={large}
                   />
                 </div>
               )}
