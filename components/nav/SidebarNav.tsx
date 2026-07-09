@@ -18,10 +18,17 @@ import {
 // and the pinned Success Tracking action. Rendered by BOTH the desktop rail and
 // the mobile drawer so the two can never drift apart. The containers own the
 // brand header, the outer width, and the collapse/close controls.
+//
+// Two visual variants share the same structure and data:
+//  - default: the compact desktop rail (with an icon-only collapsed mode)
+//  - large:   the full-screen mobile menu — big, thumb-sized text links in the
+//             style of a marketing-site mobile menu, since the drawer is the
+//             entire screen there rather than a narrow column.
 export function SidebarNav({
   visibility,
   chatUnread,
   collapsed = false,
+  large = false,
   onNavigate,
   isAdmin,
   switcherClubs = [],
@@ -30,6 +37,9 @@ export function SidebarNav({
   visibility: NavVisibility;
   chatUnread: number;
   collapsed?: boolean;
+  // Full-screen mobile menu styling (see above). Mutually exclusive with
+  // `collapsed`, which only applies to the desktop rail.
+  large?: boolean;
   // Called when a link is clicked (used by the mobile drawer to close itself).
   onNavigate?: () => void;
   isAdmin: boolean;
@@ -48,9 +58,39 @@ export function SidebarNav({
   const renderLink = (item: NavItem) => {
     const active = isNavItemActive(item.href, pathname);
     const Icon = item.icon;
-    const label = item.label;
+    const label = large ? (item.mobileLabel ?? item.label) : item.label;
     const showBadge = item.badge === "chatUnread" && chatUnread > 0;
     const badgeText = chatUnread > 99 ? "99+" : String(chatUnread);
+
+    if (large) {
+      return (
+        <Link
+          key={item.href}
+          href={item.href}
+          onClick={onNavigate}
+          aria-current={active ? "page" : undefined}
+          className={[
+            "flex items-center gap-2 py-3 text-2xl font-bold tracking-tight transition-colors",
+            active ? "text-primary" : "text-foreground hover:text-primary",
+          ].join(" ")}
+        >
+          <span className="truncate">{label}</span>
+
+          {item.adminMark && (
+            <Shield
+              className="h-4 w-4 shrink-0 text-primary opacity-70"
+              aria-hidden="true"
+            />
+          )}
+
+          {showBadge && (
+            <span className="ml-1 inline-flex min-w-6 items-center justify-center rounded-full bg-accent px-2 py-0.5 text-sm font-bold text-gray-900">
+              {badgeText}
+            </span>
+          )}
+        </Link>
+      );
+    }
 
     return (
       <Link
@@ -103,13 +143,13 @@ export function SidebarNav({
     <div className="flex h-full min-h-0 flex-col">
       <nav
         className={[
-          "flex-1 overflow-y-auto py-4",
-          collapsed ? "px-2" : "px-3",
+          "flex-1 overflow-y-auto",
+          large ? "px-6 py-6" : collapsed ? "px-2 py-4" : "px-3 py-4",
         ].join(" ")}
         aria-label="Primary"
       >
         {/* Primary (Dashboard) */}
-        <ul className="flex flex-col gap-1">
+        <ul className={large ? "flex flex-col" : "flex flex-col gap-1"}>
           {topItems.map((item) => (
             <li key={item.href}>{renderLink(item)}</li>
           ))}
@@ -130,15 +170,21 @@ export function SidebarNav({
           const label = SECTION_LABELS[section];
 
           return (
-            <div key={section} className="mt-5">
+            <div key={section} className={large ? "mt-8" : "mt-5"}>
               {label && !collapsed && (
-                <p className="mb-2 px-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                <p
+                  className={
+                    large
+                      ? "mb-2 text-sm font-bold uppercase tracking-widest text-muted-foreground"
+                      : "mb-2 px-3 text-xs font-bold uppercase tracking-wide text-muted-foreground"
+                  }
+                >
                   {label}
                 </p>
               )}
 
               {showClubSwitcher && (
-                <div className="mb-2 px-1">
+                <div className={large ? "mb-3" : "mb-2 px-1"}>
                   <ClubSwitcher
                     clubs={switcherClubs}
                     activeClubId={activeClubId}
@@ -147,7 +193,7 @@ export function SidebarNav({
                 </div>
               )}
 
-              <ul className="flex flex-col gap-1">
+              <ul className={large ? "flex flex-col" : "flex flex-col gap-1"}>
                 {items.map((item) => (
                   <li key={item.href}>{renderLink(item)}</li>
                 ))}
@@ -161,8 +207,8 @@ export function SidebarNav({
       {pinnedItems.length > 0 && (
         <div
           className={[
-            "border-t border-border py-3",
-            collapsed ? "px-2" : "px-3",
+            "border-t border-border",
+            large ? "px-6 py-5" : collapsed ? "px-2 py-3" : "px-3 py-3",
           ].join(" ")}
         >
           {pinnedItems.map((item) => {
@@ -175,13 +221,18 @@ export function SidebarNav({
                 title={collapsed ? item.label : undefined}
                 aria-label={collapsed ? item.label : undefined}
                 className={[
-                  "flex items-center rounded-lg bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90",
-                  collapsed
-                    ? "justify-center px-0 py-2.5"
-                    : "justify-center gap-2 px-4 py-2",
+                  "flex items-center rounded-lg bg-primary font-medium text-primary-foreground transition-colors hover:bg-primary/90",
+                  large
+                    ? "justify-center gap-2.5 rounded-xl px-5 py-4 text-lg font-bold"
+                    : collapsed
+                      ? "justify-center px-0 py-2.5 text-sm"
+                      : "justify-center gap-2 px-4 py-2 text-sm",
                 ].join(" ")}
               >
-                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <Icon
+                  className={large ? "h-5 w-5 shrink-0" : "h-4 w-4 shrink-0"}
+                  aria-hidden="true"
+                />
                 {!collapsed && <span>{item.label}</span>}
               </Link>
             );

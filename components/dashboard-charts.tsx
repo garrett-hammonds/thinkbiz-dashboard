@@ -99,8 +99,10 @@ function MetricChart({ title, dataKey, color, strokeColor, chartData, formatAsCu
   return (
     <div className="rounded-xl border border-gray-100 bg-card p-5 shadow-card">
       <div className="mb-1 flex items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold text-card-foreground">{title}</h3>
-        <span className="text-xs font-medium text-muted-foreground">
+        <h3 className="text-base font-semibold text-card-foreground lg:text-sm">
+          {title}
+        </h3>
+        <span className="text-sm font-medium text-muted-foreground lg:text-xs">
           {formatValue(total)} total
         </span>
       </div>
@@ -120,13 +122,13 @@ function MetricChart({ title, dataKey, color, strokeColor, chartData, formatAsCu
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }}
+              tick={{ fontSize: "0.75rem", fill: "var(--color-muted-foreground)" }}
               axisLine={{ stroke: "var(--color-border)" }}
               tickLine={false}
               minTickGap={8}
             />
             <YAxis
-              tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }}
+              tick={{ fontSize: "0.75rem", fill: "var(--color-muted-foreground)" }}
               axisLine={false}
               tickLine={false}
               tickFormatter={formatAxis}
@@ -138,7 +140,7 @@ function MetricChart({ title, dataKey, color, strokeColor, chartData, formatAsCu
                 backgroundColor: "var(--color-card)",
                 border: "1px solid var(--color-border)",
                 borderRadius: "8px",
-                fontSize: "13px",
+                fontSize: "0.85rem",
                 boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
               }}
               formatter={(value: number) => [formatValue(value), title]}
@@ -153,7 +155,7 @@ function MetricChart({ title, dataKey, color, strokeColor, chartData, formatAsCu
                 label={{
                   value: `avg ${formatValue(Math.round(average))}`,
                   position: "insideTopRight",
-                  fontSize: 10,
+                  fontSize: "0.65rem",
                   fill: "var(--color-muted-foreground)",
                 }}
               />

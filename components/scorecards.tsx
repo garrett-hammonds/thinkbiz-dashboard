@@ -25,12 +25,16 @@ function Scorecard({ title, value, subtitle, icon, accentColor }: ScorecardProps
         {icon}
       </div>
       <div className="min-w-0">
-        <p className="text-sm font-medium text-muted-foreground">{title}</p>
-        <p className="mt-1 text-2xl font-bold tracking-tight text-card-foreground">
+        <p className="text-base font-medium text-muted-foreground lg:text-sm">
+          {title}
+        </p>
+        <p className="mt-1 text-3xl font-bold tracking-tight text-card-foreground lg:text-2xl">
           {value}
         </p>
         {subtitle && (
-          <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
+          <p className="mt-0.5 text-sm text-muted-foreground lg:text-xs">
+            {subtitle}
+          </p>
         )}
       </div>
     </div>
