@@ -97,7 +97,7 @@ export function SidebarDrawer({
         tabIndex={-1}
         className="fixed inset-0 z-50 flex flex-col bg-card focus:outline-none"
       >
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
           <Link
             href="/dashboard"
             onClick={onClose}
@@ -108,7 +108,7 @@ export function SidebarDrawer({
               alt="ThinkBiz Solutions"
               width={160}
               height={44}
-              className="h-9 w-auto"
+              className="h-10 w-auto"
             />
             {showRoleBadge && (
               <span className="flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs font-bold text-foreground">
@@ -122,9 +122,9 @@ export function SidebarDrawer({
             type="button"
             onClick={onClose}
             aria-label="Close menu"
-            className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="-mr-2 shrink-0 rounded-lg p-3 text-foreground transition-colors hover:bg-muted"
           >
-            <X className="h-6 w-6" />
+            <X className="h-8 w-8" />
           </button>
         </div>
 

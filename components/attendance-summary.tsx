@@ -13,6 +13,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { METRIC_COLORS, METRIC_STROKE_COLORS } from "@/lib/chartColors";
+import { useBelowLg } from "@/lib/useBelowLg";
 
 export interface AttendanceWeekDatum {
   // Short tick label, e.g. "Jul 1".
@@ -36,6 +37,7 @@ export function AttendanceSummary({
   rosterSize,
   meetingDayLabel,
 }: AttendanceSummaryProps) {
+  const belowLg = useBelowLg();
   const color = METRIC_COLORS.attendance;
   const strokeColor = METRIC_STROKE_COLORS.attendance;
 
@@ -89,7 +91,7 @@ export function AttendanceSummary({
             last {data.length} meetings
           </span>
         </div>
-        <div className="h-64 lg:h-56" role="img" aria-label={summary}>
+        <div className="h-72 lg:h-56" role="img" aria-label={summary}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={data}
@@ -109,16 +111,16 @@ export function AttendanceSummary({
               />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: "0.8rem", fill: "var(--color-muted-foreground)" }}
+                tick={{ fill: "var(--color-muted-foreground)" }}
                 axisLine={{ stroke: "var(--color-border)" }}
                 tickLine={false}
                 minTickGap={8}
               />
               <YAxis
-                tick={{ fontSize: "0.8rem", fill: "var(--color-muted-foreground)" }}
+                tick={{ fill: "var(--color-muted-foreground)" }}
                 axisLine={false}
                 tickLine={false}
-                width={52}
+                width={belowLg ? 56 : 40}
                 allowDecimals={false}
                 // Pin the axis to roster size so a full house visually reads
                 // as a full chart, not an arbitrary local maximum.
@@ -129,7 +131,7 @@ export function AttendanceSummary({
                   backgroundColor: "var(--color-card)",
                   border: "1px solid var(--color-border)",
                   borderRadius: "8px",
-                  fontSize: "0.85rem",
+                  fontSize: "0.9rem",
                   boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
                 }}
                 formatter={(value: number) => [
@@ -147,7 +149,6 @@ export function AttendanceSummary({
                   label={{
                     value: `avg ${Math.round(average)}`,
                     position: "insideTopRight",
-                    fontSize: "0.7rem",
                     fill: "var(--color-muted-foreground)",
                   }}
                 />
