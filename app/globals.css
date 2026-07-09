@@ -83,13 +83,15 @@
    text, padding, and tap targets together. Rationale: some phones lay pages
    out at a wide viewport (in-app webviews, "Desktop site" mode, large display
    settings) and then shrink them to fit the screen — at ~900-980px a
-   16px-root UI reads tiny. A ~390px phone resolves to ~16px (unchanged);
-   ~768px to ~21.5px; ~980px to ~25px. Tailwind's breakpoints are evaluated
-   against the initial font size, not this override, so `sm:`/`md:`/`lg:`
-   variants are unaffected. Desktop (>=1024px, sidebar visible) stays 16px. */
+   16px-root UI reads tiny. The floor is 17px per Apple HIG's 17pt body
+   default (Material Design's floor is 16sp): a ~390px phone resolves to
+   ~17px; ~768px to ~24.5px; ~980px to ~28.5px. Tailwind's breakpoints are
+   evaluated against the initial font size, not this override, so
+   `sm:`/`md:`/`lg:` variants are unaffected. Desktop (>=1024px, sidebar
+   visible) stays 16px. */
 @media (max-width: 1023px) {
   html {
-    font-size: clamp(16px, 10px + 1.5vw, 25px);
+    font-size: clamp(17px, 9.4px + 1.95vw, 30px);
   }
 }
 
