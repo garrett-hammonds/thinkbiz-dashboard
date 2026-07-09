@@ -21,9 +21,9 @@ import {
 //
 // Two visual variants share the same structure and data:
 //  - default: the compact desktop rail (with an icon-only collapsed mode)
-//  - large:   the full-screen mobile menu — big, thumb-sized text links in the
-//             style of a marketing-site mobile menu, since the drawer is the
-//             entire screen there rather than a narrow column.
+//  - large:   the full-screen mobile menu — the same visual language as the
+//             rail (icons, rounded rows, teal border-l active state) scaled up
+//             to thumb-sized targets, since the drawer owns the whole screen.
 export function SidebarNav({
   visibility,
   chatUnread,
@@ -63,6 +63,8 @@ export function SidebarNav({
     const badgeText = chatUnread > 99 ? "99+" : String(chatUnread);
 
     if (large) {
+      // Same visual language as the desktop rail (icon + label, rounded row,
+      // teal border-l active state), scaled up for thumbs and small screens.
       return (
         <Link
           key={item.href}
@@ -70,21 +72,35 @@ export function SidebarNav({
           onClick={onNavigate}
           aria-current={active ? "page" : undefined}
           className={[
-            "flex items-center gap-2 py-3 text-2xl font-bold tracking-tight transition-colors",
-            active ? "text-primary" : "text-foreground hover:text-primary",
+            "flex items-center gap-3 rounded-lg border-l-2 px-3 py-3 text-xl transition-colors",
+            active
+              ? "border-primary bg-muted font-semibold text-foreground"
+              : "border-transparent font-medium text-foreground hover:bg-muted",
           ].join(" ")}
         >
+          <Icon
+            className={[
+              "h-6 w-6 shrink-0",
+              active ? "text-primary" : "text-muted-foreground",
+            ].join(" ")}
+            aria-hidden="true"
+          />
           <span className="truncate">{label}</span>
 
           {item.adminMark && (
             <Shield
-              className="h-4 w-4 shrink-0 text-primary opacity-70"
+              className="ml-auto h-4 w-4 shrink-0 text-primary opacity-70"
               aria-hidden="true"
             />
           )}
 
           {showBadge && (
-            <span className="ml-1 inline-flex min-w-6 items-center justify-center rounded-full bg-accent px-2 py-0.5 text-sm font-bold text-gray-900">
+            <span
+              className={[
+                "inline-flex min-w-6 items-center justify-center rounded-full bg-accent px-2 py-0.5 text-sm font-bold text-gray-900",
+                item.adminMark ? "" : "ml-auto",
+              ].join(" ")}
+            >
               {badgeText}
             </span>
           )}
@@ -144,12 +160,12 @@ export function SidebarNav({
       <nav
         className={[
           "flex-1 overflow-y-auto",
-          large ? "px-6 py-6" : collapsed ? "px-2 py-4" : "px-3 py-4",
+          large ? "px-4 py-5" : collapsed ? "px-2 py-4" : "px-3 py-4",
         ].join(" ")}
         aria-label="Primary"
       >
         {/* Primary (Dashboard) */}
-        <ul className={large ? "flex flex-col" : "flex flex-col gap-1"}>
+        <ul className="flex flex-col gap-1">
           {topItems.map((item) => (
             <li key={item.href}>{renderLink(item)}</li>
           ))}
@@ -170,12 +186,12 @@ export function SidebarNav({
           const label = SECTION_LABELS[section];
 
           return (
-            <div key={section} className={large ? "mt-8" : "mt-5"}>
+            <div key={section} className={large ? "mt-7" : "mt-5"}>
               {label && !collapsed && (
                 <p
                   className={
                     large
-                      ? "mb-2 text-sm font-bold uppercase tracking-widest text-muted-foreground"
+                      ? "mb-2 px-3 text-sm font-bold uppercase tracking-wide text-muted-foreground"
                       : "mb-2 px-3 text-xs font-bold uppercase tracking-wide text-muted-foreground"
                   }
                 >
@@ -184,7 +200,7 @@ export function SidebarNav({
               )}
 
               {showClubSwitcher && (
-                <div className={large ? "mb-3" : "mb-2 px-1"}>
+                <div className="mb-2 px-1">
                   <ClubSwitcher
                     clubs={switcherClubs}
                     activeClubId={activeClubId}
@@ -193,7 +209,7 @@ export function SidebarNav({
                 </div>
               )}
 
-              <ul className={large ? "flex flex-col" : "flex flex-col gap-1"}>
+              <ul className="flex flex-col gap-1">
                 {items.map((item) => (
                   <li key={item.href}>{renderLink(item)}</li>
                 ))}
@@ -208,7 +224,7 @@ export function SidebarNav({
         <div
           className={[
             "border-t border-border",
-            large ? "px-6 py-5" : collapsed ? "px-2 py-3" : "px-3 py-3",
+            large ? "px-4 py-4" : collapsed ? "px-2 py-3" : "px-3 py-3",
           ].join(" ")}
         >
           {pinnedItems.map((item) => {
@@ -221,12 +237,12 @@ export function SidebarNav({
                 title={collapsed ? item.label : undefined}
                 aria-label={collapsed ? item.label : undefined}
                 className={[
-                  "flex items-center rounded-lg bg-primary font-medium text-primary-foreground transition-colors hover:bg-primary/90",
+                  "flex items-center rounded-lg bg-primary text-primary-foreground transition-colors",
                   large
-                    ? "justify-center gap-2.5 rounded-xl px-5 py-4 text-lg font-bold"
-                    : collapsed
-                      ? "justify-center px-0 py-2.5 text-sm"
-                      : "justify-center gap-2 px-4 py-2 text-sm",
+                    ? "justify-center gap-2.5 px-6 py-3 text-lg font-semibold hover:bg-secondary"
+                    : "font-medium hover:bg-primary/90",
+                  !large && collapsed ? "justify-center px-0 py-2.5 text-sm" : "",
+                  !large && !collapsed ? "justify-center gap-2 px-4 py-2 text-sm" : "",
                 ].join(" ")}
               >
                 <Icon

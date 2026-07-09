@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import { Shield, X } from "lucide-react";
 import { SidebarNav } from "./SidebarNav";
 import type { SwitcherClub } from "../ClubSwitcher";
@@ -95,24 +97,32 @@ export function SidebarDrawer({
         tabIndex={-1}
         className="fixed inset-0 z-50 flex flex-col bg-card focus:outline-none"
       >
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-6">
-          <span className="flex items-center gap-3">
-            <span className="text-sm font-bold uppercase tracking-[0.2em] text-muted-foreground">
-              Menu
-            </span>
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4">
+          <Link
+            href="/dashboard"
+            onClick={onClose}
+            className="flex items-center gap-2 transition-opacity hover:opacity-80"
+          >
+            <Image
+              src="/thinkbiz-horizontal-logo.svg"
+              alt="ThinkBiz Solutions"
+              width={160}
+              height={44}
+              className="h-9 w-auto"
+            />
             {showRoleBadge && (
               <span className="flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs font-bold text-foreground">
                 <Shield className="h-3 w-3" />
                 {isAdmin ? "Admin" : "Director"}
               </span>
             )}
-          </span>
+          </Link>
 
           <button
             type="button"
             onClick={onClose}
             aria-label="Close menu"
-            className="shrink-0 rounded-xl border border-border p-2.5 text-foreground transition-colors hover:bg-muted"
+            className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <X className="h-6 w-6" />
           </button>
