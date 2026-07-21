@@ -10,6 +10,10 @@ export type ChatChannel = {
   name: string;
   description: string | null;
   club_id: string | null;
+  // 1:1 direct message. `name` holds the other participant's name and
+  // `dm_partner_id` their member id (for headshot lookup in the directory).
+  is_dm: boolean;
+  dm_partner_id: string | null;
   joined: boolean;
 };
 

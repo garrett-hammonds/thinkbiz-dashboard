@@ -3,11 +3,16 @@ import { createClient } from '@/utils/supabase/server';
 import { getMemberForUser } from '@/utils/supabase/getMember';
 import { membershipGateRedirect } from '@/utils/membership';
 import { getChatDirectory } from '@/utils/supabase/directory';
+import { getChannelList } from '@/utils/supabase/chatChannels';
 
 import { ChatApp } from '@/components/chat/ChatApp';
-import type { ChatChannel, ChatMember, Me } from '@/components/chat/types';
+import type { ChatMember, Me } from '@/components/chat/types';
 
-export default async function ChatPage() {
+export default async function ChatPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ channel?: string }>;
+}) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -30,46 +35,38 @@ export default async function ChatPage() {
     redirect(gate);
   }
 
-  const [
-    { data: channelsData },
-    { data: membershipsData },
-    directoryData,
-    { data: unreadData },
-  ] = await Promise.all([
-    supabase
-      .from('chat_channels')
-      .select('id, name, description, club_id')
-      .order('name'),
-    supabase
-      .from('chat_channel_members')
-      .select('channel_id')
-      .eq('member_id', member.id),
-    getChatDirectory({
-      memberId: member.id,
-      clubId: member.current_club_id,
-      isAdmin: !!member.is_admin,
-    }),
-    supabase.rpc('chat_unread_counts'),
-  ]);
+  const [{ channels, dmPartners }, directoryData, { data: unreadData }, params] =
+    await Promise.all([
+      getChannelList(supabase, member),
+      getChatDirectory({
+        memberId: member.id,
+        clubId: member.current_club_id,
+        isAdmin: !!member.is_admin,
+      }),
+      supabase.rpc('chat_unread_counts'),
+      searchParams,
+    ]);
 
-  const joinedIds = new Set((membershipsData || []).map((m) => m.channel_id as string));
-
-  const channels: ChatChannel[] = (channelsData || []).map((c) => ({
-    id: c.id,
-    name: c.name,
-    description: c.description,
-    club_id: c.club_id,
-    // Admins can read/post in every club channel (enforced by RLS), so treat
-    // them as joined everywhere — this drives realtime unread badges below.
-    joined: c.club_id
-      ? member.is_admin || c.club_id === member.current_club_id
-      : joinedIds.has(c.id),
-  }));
+  // DM partners can live outside the viewer's club/channel directory; merge
+  // them in so their names and headshots render.
+  const directory: ChatMember[] = [...(directoryData as ChatMember[])];
+  const known = new Set(directory.map((m) => m.id));
+  for (const partner of dmPartners) {
+    if (!known.has(partner.id)) directory.push(partner);
+  }
 
   const unreadCounts: Record<string, number> = {};
   for (const row of (unreadData as { channel_id: string; unread: number }[] | null) || []) {
     unreadCounts[row.channel_id] = Number(row.unread);
   }
+
+  // Deep link from the directory ("Message" button): open that conversation
+  // directly, but only if it's really one of the viewer's channels.
+  const requestedId = (params.channel || '').trim();
+  const initialActiveId =
+    requestedId && channels.some((c) => c.id === requestedId && c.joined)
+      ? requestedId
+      : null;
 
   const me: Me = {
     memberId: member.id,
@@ -84,8 +81,9 @@ export default async function ChatPage() {
       <ChatApp
         me={me}
         initialChannels={channels}
-        directory={directoryData as ChatMember[]}
+        directory={directory}
         initialUnread={unreadCounts}
+        initialActiveId={initialActiveId}
       />
     </main>
   );
