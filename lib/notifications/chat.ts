@@ -29,7 +29,7 @@ export async function dispatchChatMessageNotifications(messageId: string): Promi
     .update({ notified_at: new Date().toISOString() })
     .eq('id', messageId)
     .is('notified_at', null)
-    .select('id, channel_id, member_id, content, image_url, mentions')
+    .select('id, channel_id, member_id, content, image_url, attachments, mentions')
     .maybeSingle();
 
   if (!message || !message.channel_id || !message.member_id) return;
@@ -72,7 +72,7 @@ export async function dispatchChatMessageNotifications(messageId: string): Promi
   const authorName =
     [author?.first_name, author?.last_name].filter(Boolean).join(' ').trim() || 'Someone';
   const channelName = channel.name || 'a channel';
-  const snippet = snippetOf(message.content, message.image_url);
+  const snippet = snippetOf(message.content, message.image_url, message.attachments);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
   const url = channel.is_dm ? `${siteUrl}/chat?channel=${channel.id}` : `${siteUrl}/chat`;
 
@@ -124,9 +124,31 @@ export async function dispatchChatMessageNotifications(messageId: string): Promi
   ]);
 }
 
-function snippetOf(content: string | null, imageUrl: string | null): string {
+type AttachmentRow = { kind?: string; name?: string };
+
+function snippetOf(
+  content: string | null,
+  imageUrl: string | null,
+  attachments: unknown
+): string {
   const text = (content || '').trim();
   if (text) return text.length > 140 ? `${text.slice(0, 137)}…` : text;
-  if (imageUrl) return '📷 Image';
+
+  const atts = (Array.isArray(attachments) ? attachments : []) as AttachmentRow[];
+  if (atts.length > 0) {
+    const images = atts.filter((a) => a?.kind === 'image');
+    const files = atts.filter((a) => a?.kind === 'file');
+    if (files.length > 0) {
+      const firstName = files[0]?.name?.trim();
+      if (files.length === 1 && images.length === 0 && firstName) return `📎 ${firstName}`;
+      const parts: string[] = [];
+      if (images.length) parts.push(`${images.length} photo${images.length > 1 ? 's' : ''}`);
+      if (files.length) parts.push(`${files.length} file${files.length > 1 ? 's' : ''}`);
+      return `📎 ${parts.join(' + ')}`;
+    }
+    return images.length === 1 ? '📷 Photo' : `📷 ${images.length} photos`;
+  }
+
+  if (imageUrl) return '📷 Photo';
   return 'New message';
 }
