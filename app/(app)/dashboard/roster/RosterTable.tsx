@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Search,
   CheckCircle2,
@@ -13,8 +14,11 @@ import {
   Loader2,
   CreditCard,
   AlertCircle,
+  Trash2,
 } from 'lucide-react';
 import { resendInvite } from '@/app/actions/resendInvite';
+import { removeMember } from '@/app/actions/removeMember';
+import { Modal } from '@/components/Modal';
 
 export interface RosterRow {
   id: string;
@@ -31,6 +35,9 @@ export interface RosterRow {
   billable: boolean;
   // Whether their membership subscription is active/trialing.
   paid: boolean;
+  // Whether the viewer is allowed to remove this member from the roster
+  // (never themselves; directors can't remove fellow directors or admins).
+  removable: boolean;
 }
 
 type StatusFilter = 'all' | 'joined' | 'not_joined';
@@ -44,9 +51,42 @@ function initials(name: string): string {
 }
 
 export function RosterTable({ rows, showPayment = false }: { rows: RosterRow[]; showPayment?: boolean }) {
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [payment, setPayment] = useState<PaymentFilter>('all');
+
+  // Member awaiting the "Are you sure?" confirmation before removal.
+  const [pendingRemoval, setPendingRemoval] = useState<RosterRow | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
+  function closeRemovalModal() {
+    if (removing) return;
+    setPendingRemoval(null);
+    setRemoveError(null);
+  }
+
+  async function confirmRemoval() {
+    if (!pendingRemoval || removing) return;
+    setRemoving(true);
+    setRemoveError(null);
+    try {
+      const result = await removeMember(pendingRemoval.id);
+      if (result.success) {
+        setPendingRemoval(null);
+        // The roster rows come from the server; refresh so the removed member
+        // disappears immediately.
+        router.refresh();
+      } else {
+        setRemoveError(result.message || 'Could not remove this member.');
+      }
+    } catch {
+      setRemoveError('Something went wrong. Try again.');
+    } finally {
+      setRemoving(false);
+    }
+  }
 
   const joinedCount = useMemo(() => rows.filter((r) => r.joined).length, [rows]);
   const notJoinedCount = rows.length - joinedCount;
@@ -219,6 +259,9 @@ export function RosterTable({ rows, showPayment = false }: { rows: RosterRow[]; 
                               {r.isAdmin ? 'Admin' : 'Director'}
                             </span>
                           )}
+                          {r.removable && (
+                            <RemoveMemberButton row={r} onClick={setPendingRemoval} />
+                          )}
                         </div>
                         {r.title && (
                           <div className="text-sm text-gray-500">{r.title}</div>
@@ -270,7 +313,12 @@ export function RosterTable({ rows, showPayment = false }: { rows: RosterRow[]; 
                   <div className="flex items-center gap-3">
                     <Avatar name={r.name} headshot={r.headshot} />
                     <div>
-                      <div className="font-semibold text-foreground">{r.name}</div>
+                      <div className="flex items-center gap-2 font-semibold text-foreground">
+                        {r.name}
+                        {r.removable && (
+                          <RemoveMemberButton row={r} onClick={setPendingRemoval} />
+                        )}
+                      </div>
                       {r.title && (
                         <div className="text-sm text-gray-500">{r.title}</div>
                       )}
@@ -308,7 +356,67 @@ export function RosterTable({ rows, showPayment = false }: { rows: RosterRow[]; 
           </div>
         </div>
       )}
+
+      {/* "Are you sure?" confirmation before a member is removed. */}
+      {pendingRemoval && (
+        <Modal title="Remove member?" onClose={closeRemovalModal}>
+          <p className="text-sm leading-relaxed text-gray-600">
+            Are you sure you want to remove{' '}
+            <span className="font-semibold text-foreground">{pendingRemoval.name}</span>{' '}
+            from your roster? They will be marked inactive and their profile will
+            no longer be public.
+          </p>
+          {removeError && (
+            <p className="mt-3 text-sm text-red-600" role="alert">
+              {removeError}
+            </p>
+          )}
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={closeRemovalModal}
+              disabled={removing}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmRemoval}
+              disabled={removing}
+              className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {removing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              {removing ? 'Removing…' : 'Yes, remove member'}
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
+  );
+}
+
+function RemoveMemberButton({
+  row,
+  onClick,
+}: {
+  row: RosterRow;
+  onClick: (row: RosterRow) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(row)}
+      aria-label={`Remove ${row.name} from the roster`}
+      title="Remove from roster"
+      className="rounded-lg p-1 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-600"
+    >
+      <Trash2 className="h-4 w-4" />
+    </button>
   );
 }
 

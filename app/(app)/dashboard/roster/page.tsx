@@ -133,6 +133,11 @@ export default async function RosterPage() {
     // active/trialing subscription.
     billable: !isPaywallExempt(m),
     paid: isMemberPaid(m),
+    // Nobody can remove themselves; directors can only remove regular members,
+    // while admins can remove anyone. Mirrors the checks in removeMember().
+    removable:
+      m.id !== member.id &&
+      (!!member.is_admin || (!m.is_admin && !m.club_director)),
   }));
 
   return (
