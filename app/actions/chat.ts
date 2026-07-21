@@ -3,8 +3,11 @@
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { getMemberForUser } from '@/utils/supabase/getMember';
+import { getChannelList } from '@/utils/supabase/chatChannels';
 import { dispatchChatMessageNotifications } from '@/lib/notifications/chat';
 import { revalidatePath } from 'next/cache';
+import type { ChatChannel } from '@/components/chat/types';
+import type { DirectoryMember } from '@/utils/supabase/directory';
 
 // Fires push + email notifications for a just-sent chat message. The web client
 // calls this (fire-and-forget) immediately after inserting a message, so chat
@@ -34,6 +37,25 @@ export async function notifyChatMessage(messageId: string): Promise<void> {
   if (!message || message.member_id !== member.id) return;
 
   await dispatchChatMessageNotifications(id);
+}
+
+// Re-fetches the viewer's channel list. The chat client calls this when a
+// realtime message arrives for a channel it doesn't know yet — which happens
+// when someone opens a new DM with you while you have chat open.
+export async function getMyChatChannels(): Promise<{
+  channels: ChatChannel[];
+  dmPartners: DirectoryMember[];
+}> {
+  const empty = { channels: [], dmPartners: [] };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return empty;
+
+  const member = await getMemberForUser(supabase, user);
+  if (!member) return empty;
+
+  return getChannelList(supabase, member);
 }
 
 export async function createChannel(formData: FormData) {

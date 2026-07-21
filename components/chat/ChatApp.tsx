@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Hash, Lock, Plus, Compass, ArrowLeft, LogOut } from "lucide-react";
+import { Hash, Lock, Plus, Compass, ArrowLeft, LogOut, User } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
-import { createChannel, notifyChatMessage } from "@/app/actions/chat";
+import { createChannel, getMyChatChannels, notifyChatMessage } from "@/app/actions/chat";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { Modal } from "@/components/Modal";
 import { MessageList } from "./MessageList";
@@ -17,29 +17,38 @@ type Props = {
   initialChannels: ChatChannel[];
   directory: ChatMember[];
   initialUnread: Record<string, number>;
+  // Deep link (e.g. the directory's "Message" button): open this conversation
+  // immediately instead of defaulting to the club channel.
+  initialActiveId?: string | null;
 };
 
-export function ChatApp({ me, initialChannels, directory, initialUnread }: Props) {
+export function ChatApp({ me, initialChannels, directory, initialUnread, initialActiveId }: Props) {
   const supabase = useMemo(() => createClient(), []);
 
   const [channels, setChannels] = useState<ChatChannel[]>(initialChannels);
+  // Members discovered after load (DM partners from conversations opened while
+  // this tab was already up); merged into the directory lookups below.
+  const [extraMembers, setExtraMembers] = useState<ChatMember[]>([]);
   const clubChannel = channels.find((c) => c.club_id && c.club_id === me.clubId);
   // Admins get access to every club's channel; list the rest under "All Clubs".
   const otherClubChannels = me.isAdmin
     ? channels.filter((c) => c.club_id && c.club_id !== me.clubId)
     : [];
-  const joinedOpen = channels.filter((c) => !c.club_id && c.joined);
-  const browseable = channels.filter((c) => !c.club_id && !c.joined);
+  const dms = channels.filter((c) => c.is_dm && c.joined);
+  const joinedOpen = channels.filter((c) => !c.club_id && !c.is_dm && c.joined);
+  const browseable = channels.filter((c) => !c.club_id && !c.is_dm && !c.joined);
 
   const [activeId, setActiveId] = useState<string | null>(
-    clubChannel?.id ?? joinedOpen[0]?.id ?? null
+    initialActiveId ?? clubChannel?.id ?? joinedOpen[0]?.id ?? null
   );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
   const [loadingEarlier, setLoadingEarlier] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [unread, setUnread] = useState<Record<string, number>>(initialUnread);
-  const [mobileView, setMobileView] = useState<"list" | "chat">("list");
+  const [mobileView, setMobileView] = useState<"list" | "chat">(
+    initialActiveId ? "chat" : "list"
+  );
   const [showBrowse, setShowBrowse] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -55,8 +64,9 @@ export function ChatApp({ me, initialChannels, directory, initialUnread }: Props
   const directoryMap = useMemo(() => {
     const map = new Map<string, ChatMember>();
     for (const m of directory) map.set(m.id, m);
+    for (const m of extraMembers) map.set(m.id, m);
     return map;
-  }, [directory]);
+  }, [directory, extraMembers]);
 
   const activeChannel = channels.find((c) => c.id === activeId) ?? null;
 
@@ -127,11 +137,30 @@ export function ChatApp({ me, initialChannels, directory, initialUnread }: Props
         if (msg.channel_id === activeIdRef.current) {
           setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
           if (msg.member_id !== me.memberId) markRead(msg.channel_id);
-        } else if (
-          msg.member_id !== me.memberId &&
-          channelsRef.current.some((c) => c.id === msg.channel_id && c.joined)
-        ) {
-          setUnread((u) => ({ ...u, [msg.channel_id]: (u[msg.channel_id] || 0) + 1 }));
+        } else if (msg.member_id !== me.memberId) {
+          if (channelsRef.current.some((c) => c.id === msg.channel_id && c.joined)) {
+            setUnread((u) => ({ ...u, [msg.channel_id]: (u[msg.channel_id] || 0) + 1 }));
+          } else if (!channelsRef.current.some((c) => c.id === msg.channel_id)) {
+            // A channel this tab doesn't know yet — someone just opened a new
+            // DM with us. Re-fetch the channel list so it appears live.
+            void getMyChatChannels()
+              .then(({ channels: fresh, dmPartners }) => {
+                if (!fresh.some((c) => c.id === msg.channel_id)) return;
+                setChannels(fresh);
+                if (dmPartners.length > 0) {
+                  setExtraMembers((prev) => {
+                    const seen = new Set(prev.map((m) => m.id));
+                    const added = dmPartners.filter((m) => !seen.has(m.id));
+                    return added.length > 0 ? [...prev, ...added] : prev;
+                  });
+                }
+                setUnread((u) => ({
+                  ...u,
+                  [msg.channel_id]: (u[msg.channel_id] || 0) + 1,
+                }));
+              })
+              .catch(() => {});
+          }
         }
       } else if (payload.eventType === "UPDATE") {
         const msg = payload.new as ChatMessage;
@@ -328,7 +357,15 @@ export function ChatApp({ me, initialChannels, directory, initialUnread }: Props
     const description = ((formData.get("description") as string) || "").trim() || null;
     setChannels((prev) => [
       ...prev,
-      { id: result.channelId!, name, description, club_id: null, joined: true },
+      {
+        id: result.channelId!,
+        name,
+        description,
+        club_id: null,
+        is_dm: false,
+        dm_partner_id: null,
+        joined: true,
+      },
     ]);
     setShowCreate(false);
     selectChannel(result.channelId);
@@ -346,6 +383,29 @@ export function ChatApp({ me, initialChannels, directory, initialUnread }: Props
       </span>
     ) : null;
 
+  // DM channels get the partner's headshot (or a person glyph) instead of the
+  // lock/hash channel icons.
+  const channelIcon = (c: ChatChannel) => {
+    if (c.is_dm) {
+      const partner = c.dm_partner_id ? directoryMap.get(c.dm_partner_id) : undefined;
+      return partner?.member_headshot ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={partner.member_headshot}
+          alt=""
+          className="h-5 w-5 shrink-0 rounded-full object-cover"
+        />
+      ) : (
+        <User className="h-4 w-4 shrink-0 opacity-70" />
+      );
+    }
+    return c.club_id ? (
+      <Lock className="h-4 w-4 shrink-0 opacity-70" />
+    ) : (
+      <Hash className="h-4 w-4 shrink-0 opacity-70" />
+    );
+  };
+
   const channelButton = (c: ChatChannel) => (
     <button
       key={c.id}
@@ -356,14 +416,10 @@ export function ChatApp({ me, initialChannels, directory, initialUnread }: Props
           : "text-gray-700 hover:bg-muted"
       }`}
     >
-      {c.club_id ? (
-        <Lock className="h-4 w-4 shrink-0 opacity-70" />
-      ) : (
-        <Hash className="h-4 w-4 shrink-0 opacity-70" />
-      )}
+      {channelIcon(c)}
       <span className="truncate">{c.name}</span>
       {unreadBadge(unread[c.id])}
-      {!c.club_id && c.joined && (
+      {!c.club_id && !c.is_dm && c.joined && (
         <span
           role="button"
           tabIndex={0}
@@ -421,6 +477,15 @@ export function ChatApp({ me, initialChannels, directory, initialUnread }: Props
             </>
           )}
 
+          {dms.length > 0 && (
+            <>
+              <p className="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Direct Messages
+              </p>
+              {dms.map(channelButton)}
+            </>
+          )}
+
           {otherClubChannels.length > 0 && (
             <>
               <p className="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -461,17 +526,17 @@ export function ChatApp({ me, initialChannels, directory, initialUnread }: Props
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
-              {activeChannel.club_id ? (
-                <Lock className="h-4 w-4 text-gray-400" />
-              ) : (
-                <Hash className="h-4 w-4 text-gray-400" />
-              )}
+              {channelIcon(activeChannel)}
               <div className="min-w-0">
                 <h3 className="truncate text-base font-bold text-foreground">
                   {activeChannel.name}
                 </h3>
-                {activeChannel.description && (
-                  <p className="truncate text-xs text-gray-500">{activeChannel.description}</p>
+                {activeChannel.is_dm ? (
+                  <p className="truncate text-xs text-gray-500">Direct message</p>
+                ) : (
+                  activeChannel.description && (
+                    <p className="truncate text-xs text-gray-500">{activeChannel.description}</p>
+                  )
                 )}
               </div>
             </div>

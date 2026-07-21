@@ -36,7 +36,7 @@ export async function dispatchChatMessageNotifications(messageId: string): Promi
 
   // Channel (name + club scope) and author name.
   const [{ data: channel }, { data: author }] = await Promise.all([
-    admin.from('chat_channels').select('id, name, club_id').eq('id', message.channel_id).maybeSingle(),
+    admin.from('chat_channels').select('id, name, club_id, is_dm').eq('id', message.channel_id).maybeSingle(),
     admin.from('members').select('first_name, last_name').eq('id', message.member_id).maybeSingle(),
   ]);
 
@@ -74,7 +74,23 @@ export async function dispatchChatMessageNotifications(messageId: string): Promi
   const channelName = channel.name || 'a channel';
   const snippet = snippetOf(message.content, message.image_url);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-  const url = `${siteUrl}/chat`;
+  const url = channel.is_dm ? `${siteUrl}/chat?channel=${channel.id}` : `${siteUrl}/chat`;
+
+  // Direct message: one recipient, no channel to name, and mention semantics
+  // don't add anything in a 1:1 — a single sender-titled push covers it.
+  if (channel.is_dm) {
+    await dispatchNotifications({
+      category: 'chat',
+      recipientMemberIds: recipientIds,
+      push: {
+        title: `New message from ${authorName}`,
+        body: snippet,
+        url,
+        tag: `chat-${channel.id}`,
+      },
+    });
+    return;
+  }
 
   // Two disjoint dispatches so mentioned members aren't double-pushed:
   //  - non-mentioned: push only
