@@ -1,7 +1,10 @@
 'use server';
 
-import { createClient as createAdminClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { verifyDirectorInviteToken } from '@/utils/inviteTokens';
+import { buildOnboardingLink } from '@/utils/supabase/authLinks';
+import { sendEmail } from '@/lib/email/client';
+import { memberInviteEmail } from '@/lib/email/templates';
 
 export interface AcceptDirectorInviteInput {
   token: string;
@@ -10,35 +13,6 @@ export interface AcceptDirectorInviteInput {
 export interface AcceptDirectorInviteResult {
   success: boolean;
   message?: string;
-}
-
-async function findAuthUserByEmail(
-  admin: SupabaseClient,
-  email: string,
-): Promise<{ id: string } | null> {
-  const target = email.toLowerCase();
-  let page = 1;
-  const perPage = 1000;
-  while (true) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-    if (error || !data?.users) return null;
-    const found = data.users.find((u) => u.email?.toLowerCase() === target);
-    if (found) return { id: found.id };
-    if (data.users.length < perPage) return null;
-    page += 1;
-    if (page > 50) return null;
-  }
-}
-
-function isUserAlreadyExistsError(err: { message?: string; code?: string } | null): boolean {
-  if (!err) return false;
-  if (err.code === 'email_exists' || err.code === 'user_already_exists') return true;
-  const msg = (err.message || '').toLowerCase();
-  return (
-    msg.includes('already registered') ||
-    msg.includes('already exists') ||
-    msg.includes('user already')
-  );
 }
 
 export async function acceptDirectorInvite(
@@ -83,45 +57,20 @@ export async function acceptDirectorInvite(
     };
   }
 
-  let userId: string;
-  let emailSent = true;
-
-  const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
-    claims.email,
-    {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/update-password`,
-    },
-  );
-
-  if (inviteError && isUserAlreadyExistsError(inviteError)) {
-    const existingAuthUser = await findAuthUserByEmail(admin, claims.email);
-    if (!existingAuthUser) {
-      console.error(
-        '[acceptDirectorInvite] auth user reported as existing but lookup failed:',
-        inviteError,
-      );
-      return {
-        success: false,
-        message: 'An account exists for this email but we could not look it up. Contact ThinkBiz Support.',
-      };
-    }
-    userId = existingAuthUser.id;
-    emailSent = false;
-  } else if (inviteError || !inviteData?.user) {
-    console.error('[acceptDirectorInvite] inviteUserByEmail failed:', inviteError);
-    return {
-      success: false,
-      message: 'Could not send the invite email. Please try again.',
-    };
-  } else {
-    userId = inviteData.user.id;
+  // Mint a sign-in link the same way member approval does: an invite link for a
+  // brand-new auth user, or a magic link if the auth account already exists
+  // (e.g. a prior claim attempt created it before the member row was saved).
+  // Either way the recipient lands on /update-password to set a password.
+  const link = await buildOnboardingLink(admin, claims.email, '/update-password');
+  if (!link) {
+    return { success: false, message: 'Could not create your sign-in link. Please try again.' };
   }
 
   if (existingMember) {
     const { error: updateError } = await admin
       .from('members')
       .update({
-        auth_user_id: userId,
+        auth_user_id: link.userId,
         current_club_id: claims.clubId,
         club_director: true,
         is_active: true,
@@ -133,10 +82,16 @@ export async function acceptDirectorInvite(
       return { success: false, message: 'Failed to link existing member to invite.' };
     }
   } else {
+    // first_name / last_name are NOT NULL in the members schema. Director
+    // invites only carry an email, so seed them empty — the onboarding form
+    // (which gates the dashboard) requires real names and overwrites these,
+    // and the slug trigger regenerates the slug from them on that update.
     const { error: insertError } = await admin.from('members').insert({
-      auth_user_id: userId,
+      auth_user_id: link.userId,
       current_club_id: claims.clubId,
       email: claims.email,
+      first_name: '',
+      last_name: '',
       club_director: true,
       is_active: true,
     });
@@ -147,10 +102,15 @@ export async function acceptDirectorInvite(
     }
   }
 
-  return {
-    success: true,
-    message: emailSent
-      ? undefined
-      : 'This email already has a ThinkBiz account — sign in with your existing password to finish setup.',
-  };
+  const email = memberInviteEmail({ url: link.url });
+  const sent = await sendEmail({ to: claims.email, ...email });
+  if (!sent) {
+    return {
+      success: false,
+      message:
+        'Your account was set up but the sign-in email could not be sent. Use "Forgot password" on the login page to get in, or contact ThinkBiz Support.',
+    };
+  }
+
+  return { success: true };
 }
