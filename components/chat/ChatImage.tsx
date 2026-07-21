@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { chatImageStoragePath } from "@/lib/chat/imagePath";
+import { CHAT_IMAGE_BUCKET } from "@/lib/chat/attachments";
 
 // Renders a chat image attachment from the private `chat-images` bucket.
 //
@@ -13,7 +14,17 @@ import { chatImageStoragePath } from "@/lib/chat/imagePath";
 // attachments off the public internet.
 const SIGNED_URL_TTL_SECONDS = 3600;
 
-export function ChatImage({ stored, hasContent }: { stored: string; hasContent: boolean }) {
+// Default rendering: a single large-ish contained image (legacy single-image
+// messages). Pass `className` to render a fixed-size grid thumbnail instead.
+const DEFAULT_IMG_CLASS = "max-h-72 max-w-xs rounded-lg object-contain";
+
+export function ChatImage({
+  stored,
+  className,
+}: {
+  stored: string;
+  className?: string;
+}) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -22,7 +33,7 @@ export function ChatImage({ stored, hasContent }: { stored: string; hasContent: 
     const path = chatImageStoragePath(stored);
     const supabase = createClient();
     supabase.storage
-      .from("chat-images")
+      .from(CHAT_IMAGE_BUCKET)
       .createSignedUrl(path, SIGNED_URL_TTL_SECONDS)
       .then(({ data, error }) => {
         if (!active) return;
@@ -40,23 +51,23 @@ export function ChatImage({ stored, hasContent }: { stored: string; hasContent: 
     };
   }, [stored]);
 
-  const wrapperClass = `${hasContent ? "mt-2 " : ""}max-h-72 max-w-xs rounded-lg object-contain`;
+  const imgClass = className ?? DEFAULT_IMG_CLASS;
 
   if (failed) {
-    return (
-      <p className={`${hasContent ? "mt-2 " : ""}text-xs text-gray-500`}>Image unavailable</p>
-    );
+    return <p className="text-xs text-gray-500">Image unavailable</p>;
   }
 
   if (!url) {
     // Lightweight placeholder while the signed URL resolves.
-    return <div className={`${hasContent ? "mt-2 " : ""}h-40 w-40 animate-pulse rounded-lg bg-muted`} />;
+    return (
+      <div className={`animate-pulse rounded-lg bg-muted ${className ? className : "h-40 w-40"}`} />
+    );
   }
 
   return (
     <a href={url} target="_blank" rel="noopener noreferrer">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt="Attachment" className={wrapperClass} />
+      <img src={url} alt="Attachment" className={imgClass} />
     </a>
   );
 }
