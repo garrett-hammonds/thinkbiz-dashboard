@@ -54,7 +54,8 @@ export const config = {
   matcher: [
     // Run on page navigations only. Excludes Next internals, the API routes
     // (cron/webhooks carry their own secret/service-role auth and have no user
-    // cookies to refresh), and static asset files.
-    '/((?!_next/static|_next/image|api/|favicon.ico|icon\\.svg|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico)$).*)',
+    // cookies to refresh), the app-link association files the stores fetch
+    // anonymously (/.well-known/*), and static asset files.
+    '/((?!_next/static|_next/image|api/|\\.well-known/|favicon.ico|icon\\.svg|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico)$).*)',
   ],
 };

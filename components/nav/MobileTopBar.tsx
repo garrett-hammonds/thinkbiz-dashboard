@@ -23,7 +23,7 @@ export function MobileTopBar({
   chatUnread: number;
 }) {
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card px-5 py-4 lg:hidden">
+    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card px-5 py-4 pt-[calc(1rem+env(safe-area-inset-top))] lg:hidden">
       <Link
         href="/dashboard"
         className="flex items-center transition-opacity hover:opacity-80"

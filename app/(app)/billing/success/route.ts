@@ -12,8 +12,17 @@ export async function GET(request: Request) {
   const sessionId = url.searchParams.get('session_id');
   const stripe = getStripe();
 
+  // Checkout started inside the phone app runs in the system browser; the
+  // final destination is reached through /billing/return, which hands focus
+  // back to the app (see that route). In a browser it's a plain redirect.
+  const native = url.searchParams.get('native') === '1';
+  const finish = (path: string) =>
+    NextResponse.redirect(
+      new URL(native ? `/billing/return?to=${encodeURIComponent(path)}` : path, request.url),
+    );
+
   if (!stripe || !sessionId) {
-    return NextResponse.redirect(new URL('/billing?status=canceled', request.url));
+    return finish('/billing?status=canceled');
   }
 
   try {
@@ -24,7 +33,7 @@ export async function GET(request: Request) {
     const subscription = session.subscription;
     if (subscription && typeof subscription !== 'string') {
       await syncSubscriptionToMember(subscription);
-      return NextResponse.redirect(new URL('/dashboard?status=membership_active', request.url));
+      return finish('/dashboard?status=membership_active');
     }
   } catch (err) {
     console.error('[billing/success] failed to confirm checkout session:', err);
@@ -32,5 +41,5 @@ export async function GET(request: Request) {
 
   // Couldn't confirm — send them back to the paywall. If they did pay, the
   // webhook will catch up and the gate will clear on their next visit.
-  return NextResponse.redirect(new URL('/billing?status=processing', request.url));
+  return finish('/billing?status=processing');
 }

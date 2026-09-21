@@ -121,3 +121,23 @@ body {
   font-family: var(--font-family-base);
   transition: all var(--transition-base);
 }
+
+/* Native shell (thinkbiz-mobile-app). NativeBridge sets data-native="ios" or
+   "android" on <html> so the page can behave like an app rather than a web
+   page: no rubber-band overscroll behind the header, no long-press link
+   preview / text-selection callout on chrome, no tap flash, and the bottom
+   safe area (home indicator) is kept clear on every page. */
+html[data-native] {
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
+html[data-native] body {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+html[data-native] header,
+html[data-native] nav,
+html[data-native] button {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}

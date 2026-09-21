@@ -10,11 +10,20 @@ export interface CheckoutResult {
   error?: string;
 }
 
+// The Capacitor shell opens Stripe in the system browser (Checkout and the
+// portal must not run inside an embedded WebView). When `native` is set the
+// return URLs go through /billing/return, which bounces to the app's custom
+// scheme so the phone comes back to the app instead of staying in Safari /
+// Chrome. In a browser the URLs are the normal in-app routes.
+export interface CheckoutOptions {
+  native?: boolean;
+}
+
 // Starts a Stripe Checkout subscription for the signed-in member and returns the
 // hosted Checkout URL for the client to redirect to. We reuse the member's
 // Stripe customer across attempts (creating one the first time) so a member who
 // bails and retries doesn't pile up duplicate customers.
-export async function createCheckoutSession(): Promise<CheckoutResult> {
+export async function createCheckoutSession(options: CheckoutOptions = {}): Promise<CheckoutResult> {
   const stripe = getStripe();
   const priceId = getMembershipPriceId();
   if (!stripe || !priceId) {
@@ -55,8 +64,12 @@ export async function createCheckoutSession(): Promise<CheckoutResult> {
       // The success route confirms the session and updates the member
       // immediately so the access gate doesn't bounce them while the webhook is
       // still in flight. The webhook remains the source of truth afterward.
-      success_url: `${siteUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/billing?status=canceled`,
+      success_url: options.native
+        ? `${siteUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}&native=1`
+        : `${siteUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: options.native
+        ? `${siteUrl}/billing/return?to=${encodeURIComponent('/billing?status=canceled')}`
+        : `${siteUrl}/billing?status=canceled`,
       // Stamp the member id everywhere the webhook might read it.
       client_reference_id: member.id,
       metadata: { member_id: member.id },
@@ -76,7 +89,7 @@ export async function createCheckoutSession(): Promise<CheckoutResult> {
 
 // Opens the Stripe billing portal so an already-subscribed member can update
 // their card, view invoices, or cancel.
-export async function createBillingPortalSession(): Promise<CheckoutResult> {
+export async function createBillingPortalSession(options: CheckoutOptions = {}): Promise<CheckoutResult> {
   const stripe = getStripe();
   if (!stripe) {
     return { error: 'Membership billing is not configured yet.' };
@@ -97,7 +110,9 @@ export async function createBillingPortalSession(): Promise<CheckoutResult> {
   try {
     const session = await stripe.billingPortal.sessions.create({
       customer: member.stripe_customer_id,
-      return_url: `${siteUrl}/profile`,
+      return_url: options.native
+        ? `${siteUrl}/billing/return?to=${encodeURIComponent('/profile')}`
+        : `${siteUrl}/profile`,
     });
     return { url: session.url };
   } catch (err) {

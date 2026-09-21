@@ -1,13 +1,23 @@
 'use client';
 
-import { Printer, Download } from 'lucide-react';
+import { Printer, Download, Share2 } from 'lucide-react';
+import { useSyncExternalStore } from 'react';
+import { isNative, hostAdapter } from '@/lib/native/bridge';
 
 // PNG export resolution. The QR is vector, so we rasterize at a generous size
 // that stays crisp on slides/printouts while keeping the file small.
 const PNG_SIZE = 1024;
 
+const subscribeNoop = () => () => {};
+
 export function QrActions({ svg, clubName }: { svg: string; clubName: string }) {
   const fileBase = `${clubName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-check-in-qr`;
+
+  // Inside the iOS / Android app there is no download bar and no print
+  // dialog: files go to the share sheet (AirDrop, Files, Messages, Drive…).
+  // Host detection is client-only; the server snapshot is always "web" so
+  // hydration never mismatches.
+  const native = useSyncExternalStore(subscribeNoop, isNative, () => false);
 
   function triggerDownload(url: string, filename: string) {
     const a = document.createElement('a');
@@ -18,11 +28,23 @@ export function QrActions({ svg, clubName }: { svg: string; clubName: string }) 
     a.remove();
   }
 
-  function handleDownloadSvg() {
-    const blob = new Blob([svg], { type: 'image/svg+xml' });
+  async function deliverBlob(blob: Blob, filename: string) {
+    if (native) {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+      if (await hostAdapter().shareFile(filename, base64)) return;
+    }
     const url = URL.createObjectURL(blob);
-    triggerDownload(url, `${fileBase}.svg`);
+    triggerDownload(url, filename);
     URL.revokeObjectURL(url);
+  }
+
+  function handleDownloadSvg() {
+    void deliverBlob(new Blob([svg], { type: 'image/svg+xml' }), `${fileBase}.svg`);
   }
 
   function handleDownloadPng() {
@@ -53,9 +75,7 @@ export function QrActions({ svg, clubName }: { svg: string; clubName: string }) 
       ctx.drawImage(img, 0, 0, PNG_SIZE, PNG_SIZE);
       canvas.toBlob((blob) => {
         if (!blob) return;
-        const pngUrl = URL.createObjectURL(blob);
-        triggerDownload(pngUrl, `${fileBase}.png`);
-        URL.revokeObjectURL(pngUrl);
+        void deliverBlob(blob, `${fileBase}.png`);
       }, 'image/png');
     };
     img.onerror = () => URL.revokeObjectURL(svgUrl);
@@ -64,29 +84,42 @@ export function QrActions({ svg, clubName }: { svg: string; clubName: string }) 
 
   return (
     <div className="flex flex-wrap justify-center gap-3">
-      <button
-        type="button"
-        onClick={() => window.print()}
-        className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-secondary"
-      >
-        <Printer className="h-4 w-4" />
-        Print
-      </button>
-      <button
-        type="button"
-        onClick={handleDownloadPng}
-        className="inline-flex items-center gap-2 rounded-lg border-2 border-primary px-6 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-white"
-      >
-        <Download className="h-4 w-4" />
-        Download PNG
-      </button>
+      {native ? (
+        <button
+          type="button"
+          onClick={handleDownloadPng}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-secondary"
+        >
+          <Share2 className="h-4 w-4" />
+          Share or save PNG
+        </button>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-secondary"
+          >
+            <Printer className="h-4 w-4" />
+            Print
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadPng}
+            className="inline-flex items-center gap-2 rounded-lg border-2 border-primary px-6 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-white"
+          >
+            <Download className="h-4 w-4" />
+            Download PNG
+          </button>
+        </>
+      )}
       <button
         type="button"
         onClick={handleDownloadSvg}
         className="inline-flex items-center gap-2 rounded-lg border-2 border-primary px-6 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-white"
       >
-        <Download className="h-4 w-4" />
-        Download SVG
+        {native ? <Share2 className="h-4 w-4" /> : <Download className="h-4 w-4" />}
+        {native ? 'Share SVG' : 'Download SVG'}
       </button>
     </div>
   );

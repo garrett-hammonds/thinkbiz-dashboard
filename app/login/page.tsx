@@ -28,6 +28,13 @@ export default async function LoginPage({
           )}
         </div>
       </main>
+      <footer className="pb-[calc(1rem+env(safe-area-inset-bottom))] text-center text-xs text-gray-400">
+        <Link href="/privacy" className="hover:text-primary">Privacy</Link>
+        {' · '}
+        <Link href="/terms" className="hover:text-primary">Terms</Link>
+        {' · '}
+        <Link href="/support" className="hover:text-primary">Support</Link>
+      </footer>
     </div>
   );
 }

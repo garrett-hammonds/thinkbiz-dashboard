@@ -2,6 +2,7 @@ import 'server-only';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { sendEmail } from '@/lib/email/client';
 import { sendPush, type StoredSubscription } from '@/lib/notifications/push-server';
+import { sendNativePushes } from '@/lib/notifications/push-native';
 
 export type NotificationCategory = 'chat' | 'log_reminder' | 'application';
 
@@ -54,7 +55,8 @@ function wants(pref: PrefRow | undefined, masterCol: 'email_enabled' | 'push_ena
   return master !== false && category !== false;
 }
 
-// Fans a single notification out to email (Resend) + web push (web-push) for the
+// Fans a single notification out to email (Resend) + web push (web-push) + native
+// push (Firebase Cloud Messaging, for the phone apps) for the
 // given recipients, honoring each member's preferences. Best-effort: never throws,
 // so it can be awaited inside a server action / route without risking the caller.
 export async function dispatchNotifications(input: DispatchInput): Promise<void> {
@@ -89,9 +91,12 @@ export async function dispatchNotifications(input: DispatchInput): Promise<void>
       }
     }
 
+    // A member's push preference covers every device: browsers (web push) and
+    // the iOS / Android app (FCM) receive the same payload.
     await Promise.allSettled([
       sendEmails(emailTargets, input.email),
       sendPushes(admin, pushTargetIds, input.push),
+      sendNativePushes(admin, pushTargetIds, input.push),
     ]);
   } catch (err) {
     console.error('[notifications] dispatch failed:', err);

@@ -20,6 +20,14 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Mobile apps (iOS / Android)
+
+The phone apps are a thin Capacitor shell in the `thinkbiz-mobile-app`
+repository that loads this deployed app by URL. Everything the shell needs from
+this side — the native bridge, native push, store-compliance pages, account
+deletion, and the universal-link files — is described in
+[docs/MOBILE_APP_SETUP.md](docs/MOBILE_APP_SETUP.md).
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

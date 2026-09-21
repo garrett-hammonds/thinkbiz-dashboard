@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
 import { recordScanAction, type ScanResult } from '@/app/actions/attendance';
+import { isNative } from '@/lib/native/bridge';
 
 // Chromium ships BarcodeDetector natively; Safari/Firefox don't, so those
 // fall back to jsQR (dynamically imported — it never loads where the native
@@ -181,8 +182,9 @@ export function Scanner() {
             {camera === 'starting' && <p className="text-sm">Starting camera…</p>}
             {camera === 'denied' && (
               <p className="text-sm">
-                Camera access was blocked. Allow camera access for this site in
-                your browser settings, then reload this page.
+                {isNative()
+                  ? 'Camera access was blocked. Allow the camera for ThinkBiz in your phone’s Settings, then come back to this page.'
+                  : 'Camera access was blocked. Allow camera access for this site in your browser settings, then reload this page.'}
               </p>
             )}
             {camera === 'unavailable' && (
