@@ -6,6 +6,8 @@ import { getMemberForUser } from '@/utils/supabase/getMember';
 import { isBillingEnabled } from '@/lib/stripe/client';
 import { isPaywallExempt } from '@/utils/membership';
 import { DEFAULT_PREFS, type NotificationPrefs } from '@/components/NotificationSettings';
+import DeleteAccountSection from '@/components/DeleteAccountSection';
+import Link from 'next/link';
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -59,6 +61,16 @@ export default async function ProfilePage() {
           </div>
         )}
         <ProfileForm member={member} prefs={prefs} />
+        <div className="max-w-3xl mx-auto">
+          <DeleteAccountSection canDelete={!member.is_admin && !member.club_director} />
+          <p className="text-center text-xs text-gray-400">
+            <Link href="/privacy" className="hover:text-primary">Privacy Policy</Link>
+            {' · '}
+            <Link href="/terms" className="hover:text-primary">Terms of Use</Link>
+            {' · '}
+            <Link href="/support" className="hover:text-primary">Support</Link>
+          </p>
+        </div>
       </main>
   );
 }

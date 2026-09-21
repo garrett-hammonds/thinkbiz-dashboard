@@ -8,6 +8,13 @@ import {
   unsubscribeFromPush,
   getExistingSubscription,
 } from '@/lib/notifications/push-client';
+import { isNative } from '@/lib/native/bridge';
+import {
+  enrollNativePush,
+  hasNativeEnrollment,
+  isNativePushSupported,
+  unenrollNativePush,
+} from '@/lib/native/push';
 
 export interface NotificationPrefs {
   email_enabled: boolean;
@@ -45,10 +52,23 @@ export default function NotificationSettings({ prefs }: { prefs: NotificationPre
     'loading' | 'unsupported' | 'subscribed' | 'unsubscribed' | 'denied' | 'busy'
   >('loading');
   const [needsHomeScreen, setNeedsHomeScreen] = useState(false);
+  // Inside the iOS / Android app the OS prompt and an FCM token replace the
+  // browser's PushManager; the preference toggles below are shared.
+  const [native, setNative] = useState(false);
 
   useEffect(() => {
     let active = true;
     (async () => {
+      if (isNative()) {
+        setNative(true);
+        if (!isNativePushSupported()) {
+          if (active) setPushState('unsupported');
+          return;
+        }
+        const enrolled = await hasNativeEnrollment();
+        if (active) setPushState(enrolled ? 'subscribed' : 'unsubscribed');
+        return;
+      }
       if (!isPushSupported()) {
         // On iOS, push only works once installed to the Home Screen.
         const iOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -68,6 +88,17 @@ export default function NotificationSettings({ prefs }: { prefs: NotificationPre
 
   const handleEnable = async () => {
     setPushState('busy');
+    if (native) {
+      try {
+        const result = await enrollNativePush();
+        if (result === 'granted') setPushState('subscribed');
+        else if (result === 'denied') setPushState('denied');
+        else setPushState('unsubscribed');
+      } catch {
+        setPushState('unsubscribed');
+      }
+      return;
+    }
     const result = await subscribeToPush();
     if (result.ok) {
       setPushState('subscribed');
@@ -80,7 +111,8 @@ export default function NotificationSettings({ prefs }: { prefs: NotificationPre
 
   const handleDisable = async () => {
     setPushState('busy');
-    await unsubscribeFromPush();
+    if (native) await unenrollNativePush();
+    else await unsubscribeFromPush();
     setPushState('unsubscribed');
   };
 
@@ -90,11 +122,17 @@ export default function NotificationSettings({ prefs }: { prefs: NotificationPre
       <div className="rounded-lg bg-gray-50 p-4">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-gray-900">Browser push notifications</p>
+            <p className="text-sm font-medium text-gray-900">
+              {native ? 'Push notifications on this phone' : 'Browser push notifications'}
+            </p>
             <p className="text-sm text-gray-500">
               {pushState === 'subscribed'
-                ? 'This browser is set up to receive push notifications.'
-                : 'Get notified in this browser even when the dashboard is closed.'}
+                ? native
+                  ? 'This phone is set up to receive push notifications.'
+                  : 'This browser is set up to receive push notifications.'
+                : native
+                  ? 'Get notified on this phone even when the app is closed.'
+                  : 'Get notified in this browser even when the dashboard is closed.'}
             </p>
           </div>
           {pushState === 'subscribed' ? (
@@ -118,7 +156,9 @@ export default function NotificationSettings({ prefs }: { prefs: NotificationPre
         </div>
         {pushState === 'denied' && (
           <p className="mt-3 text-sm text-red-700">
-            Notifications are blocked for this site. Allow them in your browser settings, then try again.
+            {native
+              ? 'Notifications are turned off for ThinkBiz. Allow them in your phone’s Settings, then try again.'
+              : 'Notifications are blocked for this site. Allow them in your browser settings, then try again.'}
           </p>
         )}
         {pushState === 'unsupported' && needsHomeScreen && (
@@ -128,7 +168,11 @@ export default function NotificationSettings({ prefs }: { prefs: NotificationPre
           </p>
         )}
         {pushState === 'unsupported' && !needsHomeScreen && (
-          <p className="mt-3 text-sm text-gray-600">This browser doesn&apos;t support push notifications.</p>
+          <p className="mt-3 text-sm text-gray-600">
+            {native
+              ? 'Push notifications aren’t available in this build of the app.'
+              : 'This browser doesn’t support push notifications.'}
+          </p>
         )}
       </div>
 

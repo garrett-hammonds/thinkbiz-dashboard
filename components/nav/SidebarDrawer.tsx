@@ -97,7 +97,7 @@ export function SidebarDrawer({
         tabIndex={-1}
         className="fixed inset-0 z-50 flex flex-col bg-card focus:outline-none"
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4 pt-[calc(1rem+env(safe-area-inset-top))]">
           <Link
             href="/dashboard"
             onClick={onClose}

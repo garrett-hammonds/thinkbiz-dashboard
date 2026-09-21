@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { createCheckoutSession } from './actions';
+import { isNative, hostAdapter } from '@/lib/native/bridge';
 
 export default function CheckoutButton({ label = 'Start your membership' }: { label?: string }) {
   const [loading, setLoading] = useState(false);
@@ -13,8 +14,16 @@ export default function CheckoutButton({ label = 'Start your membership' }: { la
     setLoading(true);
     setError(null);
     try {
-      const result = await createCheckoutSession();
+      // Inside the iOS / Android app, Checkout runs in the system browser and
+      // hands focus back through the app's custom scheme when it finishes.
+      const native = isNative();
+      const result = await createCheckoutSession({ native });
       if (result.url) {
+        if (native) {
+          await hostAdapter().openExternal(result.url);
+          setLoading(false);
+          return;
+        }
         window.location.href = result.url;
         return; // keep the spinner up through the redirect
       }

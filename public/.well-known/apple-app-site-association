@@ -1,0 +1,33 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["TEAMID.solutions.thinkbiz.app"],
+        "components": [
+          { "/": "/privacy*", "exclude": true },
+          { "/": "/terms*", "exclude": true },
+          { "/": "/support*", "exclude": true },
+          { "/": "/apply*", "exclude": true },
+          { "/": "/visit/*", "exclude": true },
+          { "/": "/api/*", "exclude": true },
+          { "/": "/.well-known/*", "exclude": true },
+          { "/": "/auth/*" },
+          { "/": "/director-invite*" },
+          { "/": "/update-password*" },
+          { "/": "/billing/*" },
+          { "/": "/dashboard*" },
+          { "/": "/chat*" },
+          { "/": "/directory*" },
+          { "/": "/log*" },
+          { "/": "/profile*" },
+          { "/": "/check-in-code*" },
+          { "/": "/getting-started*" },
+          { "/": "/" }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["TEAMID.solutions.thinkbiz.app"]
+  }
+}

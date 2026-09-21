@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Mail, Phone } from "lucide-react";
 
 export default function SupportPage() {
@@ -45,6 +46,21 @@ export default function SupportPage() {
               +1 (405) 367-9874
             </a>
           </div>
+        </div>
+
+        <div className="mx-auto mt-10 max-w-4xl text-center text-sm text-gray-500">
+          <p>
+            Want to close your account? Open{" "}
+            <Link href="/profile" className="font-medium text-primary hover:text-secondary">
+              My Account
+            </Link>{" "}
+            and choose Delete my account, or email us and we&apos;ll do it for you.
+          </p>
+          <p className="mt-3">
+            <Link href="/privacy" className="hover:text-primary">Privacy Policy</Link>
+            {" · "}
+            <Link href="/terms" className="hover:text-primary">Terms of Use</Link>
+          </p>
         </div>
       </main>
   );

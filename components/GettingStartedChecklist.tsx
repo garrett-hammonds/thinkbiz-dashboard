@@ -18,6 +18,8 @@ import {
   subscribeToPush,
   getExistingSubscription,
 } from '@/lib/notifications/push-client';
+import { isNative } from '@/lib/native/bridge';
+import { enrollNativePush, hasNativeEnrollment, isNativePushSupported } from '@/lib/native/push';
 
 interface Props {
   profileCompleted: boolean;
@@ -49,8 +51,20 @@ export default function GettingStartedChecklist({
     let active = true;
     (async () => {
       if (!active) return;
-      setInstalled(isStandalone());
-      setIsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent));
+      // The native app is, by definition, installed.
+      const native = isNative();
+      setInstalled(native || isStandalone());
+      setIsIOS(!native && /iphone|ipad|ipod/i.test(navigator.userAgent));
+
+      if (native) {
+        if (!isNativePushSupported()) {
+          setPushState('unsupported');
+          return;
+        }
+        const enrolled = await hasNativeEnrollment();
+        if (active) setPushState(enrolled ? 'subscribed' : 'unsubscribed');
+        return;
+      }
 
       if (!isPushSupported()) {
         setPushState('unsupported');
@@ -66,6 +80,15 @@ export default function GettingStartedChecklist({
 
   const handleEnablePush = async () => {
     setPushState('busy');
+    if (isNative()) {
+      try {
+        const r = await enrollNativePush();
+        setPushState(r === 'granted' ? 'subscribed' : r === 'denied' ? 'denied' : 'unsubscribed');
+      } catch {
+        setPushState('unsubscribed');
+      }
+      return;
+    }
     const result = await subscribeToPush();
     if (result.ok) setPushState('subscribed');
     else if (result.reason === 'denied') setPushState('denied');

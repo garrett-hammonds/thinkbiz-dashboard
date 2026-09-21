@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Loader2, CreditCard, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { createBillingPortalSession } from '@/app/(app)/billing/actions';
+import { isNative, hostAdapter } from '@/lib/native/bridge';
 
 interface MembershipCardProps {
   status: string | null;
@@ -36,8 +37,15 @@ export default function MembershipCard({ status, billable, hasCustomer, periodEn
     setLoading(true);
     setError(null);
     try {
-      const res = await createBillingPortalSession();
+      const native = isNative();
+      const res = await createBillingPortalSession({ native });
       if (res.url) {
+        if (native) {
+          // System browser inside the app; the page refreshes on return.
+          await hostAdapter().openExternal(res.url);
+          setLoading(false);
+          return;
+        }
         window.location.href = res.url; // keep spinner through the redirect
         return;
       }

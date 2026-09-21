@@ -52,6 +52,18 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Apple's universal-links file has no extension, so Next would serve
+        // it as octet-stream; Apple requires application/json. The Android
+        // assetlinks.json is fine by extension. Both must be reachable without
+        // a session and must not be framed-blocked or noindexed in a way that
+        // breaks the store verifiers, so they get their own header set.
+        source: '/.well-known/apple-app-site-association',
+        headers: [
+          { key: 'Content-Type', value: 'application/json' },
+          { key: 'Cache-Control', value: 'public, max-age=3600' },
+        ],
+      },
+      {
         source: '/:path*',
         headers: securityHeaders,
       },
