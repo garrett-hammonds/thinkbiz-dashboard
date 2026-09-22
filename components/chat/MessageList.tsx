@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Pencil, Trash2, SmilePlus } from "lucide-react";
 import type { ChatMember, ChatMessage, Me } from "./types";
 import { memberName, REACTION_EMOJIS } from "./types";
-import { ChatImage } from "./ChatImage";
+import { Attachments } from "./Attachments";
 
 type Props = {
   messages: ChatMessage[];
@@ -231,9 +231,11 @@ export function MessageList({
                         {renderContent(m.content, directoryMap)}
                       </p>
                     )}
-                    {m.image_url && (
-                      <ChatImage stored={m.image_url} hasContent={!!m.content} />
-                    )}
+                    <Attachments
+                      attachments={m.attachments ?? []}
+                      legacyImageUrl={m.image_url}
+                      hasContent={!!m.content}
+                    />
                   </div>
                 )}
 

@@ -22,12 +22,26 @@ export type ChatReaction = {
   emoji: string;
 };
 
+// A single attachment persisted on chat_messages.attachments (jsonb array).
+// `path` is the private-bucket object path — chat-images for photos,
+// chat-files for documents; the renderer picks the bucket from `kind`.
+export type ChatAttachment = {
+  path: string;
+  kind: 'image' | 'file';
+  name: string;
+  mime: string;
+  size: number;
+};
+
 export type ChatMessage = {
   id: string;
   channel_id: string;
   member_id: string;
   content: string;
+  // Legacy single-image attachment (pre-attachments messages). New messages
+  // leave this null and use `attachments` instead.
   image_url: string | null;
+  attachments: ChatAttachment[];
   mentions: string[];
   edited_at: string | null;
   created_at: string;

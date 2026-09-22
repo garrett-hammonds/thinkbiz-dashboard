@@ -8,7 +8,7 @@ import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { Modal } from "@/components/Modal";
 import { MessageList } from "./MessageList";
 import { Composer } from "./Composer";
-import type { ChatChannel, ChatMember, ChatMessage, ChatReaction, Me } from "./types";
+import type { ChatAttachment, ChatChannel, ChatMember, ChatMessage, ChatReaction, Me } from "./types";
 
 const PAGE_SIZE = 50;
 
@@ -238,7 +238,11 @@ export function ChatApp({ me, initialChannels, directory, initialUnread, initial
     setMobileView("chat");
   };
 
-  const handleSend = async (content: string, imageUrl: string | null, mentions: string[]) => {
+  const handleSend = async (
+    content: string,
+    attachments: ChatAttachment[],
+    mentions: string[]
+  ) => {
     if (!activeId) return;
     const { data, error } = await supabase
       .from("chat_messages")
@@ -246,7 +250,7 @@ export function ChatApp({ me, initialChannels, directory, initialUnread, initial
         channel_id: activeId,
         member_id: me.memberId,
         content,
-        image_url: imageUrl,
+        attachments,
         mentions,
       })
       .select("*, chat_message_reactions(member_id, emoji)")
