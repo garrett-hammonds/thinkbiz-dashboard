@@ -63,8 +63,8 @@ Test: sign in on a device build, allow notifications, then use the existing
 Both files already list the right paths; fill in the identifiers once the
 store accounts exist, then deploy:
 
-- `public/.well-known/apple-app-site-association` — replace `TEAMID` (both
-  occurrences) with the Apple Team ID (App Store Connect → Membership).
+- `public/.well-known/apple-app-site-association` — carries the Apple Team ID
+  (`N532RM9A6P`). Update it only if the app moves to a different team.
 - `public/.well-known/assetlinks.json` — replace the placeholder with the
   **Play App Signing** SHA-256 fingerprint (Play Console → Test and release →
   App integrity → App signing key certificate). Add the upload-key fingerprint
