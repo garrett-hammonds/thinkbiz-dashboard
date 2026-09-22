@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { getMemberForUser } from '@/utils/supabase/getMember';
 import { sendPushDiagnostic } from '@/lib/notifications/push-server';
+import { isNativePushEnabled, sendNativePushDiagnostic } from '@/lib/notifications/push-native';
 import { sendEmailDiagnostic } from '@/lib/email/client';
 
 export const dynamic = 'force-dynamic';
@@ -48,6 +49,8 @@ export async function GET(request: Request) {
     emailFromSet: !!process.env.EMAIL_FROM,
     chatWebhookSecretSet: !!process.env.CHAT_WEBHOOK_SECRET,
     cronSecretSet: !!process.env.CRON_SECRET,
+    // Native (iOS / Android app) push through Firebase Cloud Messaging.
+    firebaseServiceAccountSet: isNativePushEnabled(),
   };
 
   // Read this member's subscriptions with the service-role client.
@@ -79,6 +82,18 @@ export async function GET(request: Request) {
       };
     }),
   );
+
+  // Native push: the iOS / Android app registers an FCM token per phone
+  // (native_push_tokens). Send the same test there and surface Firebase's
+  // verdict per token, so "the app never registered" (no tokens), "the server
+  // credential is missing" (not-configured) and "APNs is not set up in
+  // Firebase" (a messaging/* error code) are all distinguishable.
+  const native = await sendNativePushDiagnostic(admin, member.id, {
+    title: 'ThinkBiz test push',
+    body: 'If you can see this, push delivery works on this phone. 🎉',
+    url: '/dashboard',
+    tag: 'debug-test-push',
+  });
 
   // Simulate the chat webhook's recipient resolution for this admin's club
   // channel, so we can see whether a real message *would* notify anyone —
@@ -115,6 +130,18 @@ export async function GET(request: Request) {
     config,
     subscriptionCount: subscriptions.length,
     results,
+    native: {
+      configured: native.configured,
+      tokenCount: native.results.length,
+      results: native.results,
+      hint: !native.configured
+        ? 'FIREBASE_SERVICE_ACCOUNT_JSON is not set on the server, so no native push can be sent.'
+        : native.results.length === 0
+          ? 'No phone tokens for your member. Open the iOS/Android app, sign in, and allow notifications (My Account → Enable push).'
+          : native.results.every((r) => r.ok)
+            ? 'Native push sent to every registered phone.'
+            : 'Firebase rejected at least one token — see errorCode. messaging/third-party-auth-error or an APNs mention means the .p8 key is missing or wrong in Firebase → Cloud Messaging; registration-token-not-registered means the app was reinstalled and will re-register on next launch.',
+    },
     chatSimulation,
     emailTest,
     hint:

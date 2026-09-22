@@ -137,3 +137,52 @@ export async function sendNativePushes(
   }
   return delivered;
 }
+
+export interface NativePushDiagnostic {
+  platform: string;
+  tokenPrefix: string;
+  appVersion: string | null;
+  ok: boolean;
+  errorCode?: string;
+  errorMessage?: string;
+}
+
+// Like sendNativePushes but for one member and with Firebase's verdict per
+// token, for the admin debug route. Never prunes; a dead token is reported so
+// the admin can see it rather than silently disappearing.
+export async function sendNativePushDiagnostic(
+  admin: SupabaseClient,
+  memberId: string,
+  payload: PushPayload,
+): Promise<{ configured: boolean; results: NativePushDiagnostic[] }> {
+  const client = await getMessaging();
+  const { data } = await admin
+    .from('native_push_tokens')
+    .select('platform, token, app_version')
+    .eq('member_id', memberId);
+  const rows = (data ?? []) as { platform: string; token: string; app_version: string | null }[];
+  const base = rows.map((r) => ({
+    platform: r.platform,
+    tokenPrefix: `${r.token.slice(0, 12)}…`,
+    appVersion: r.app_version,
+  }));
+  if (!client) {
+    return { configured: false, results: base.map((b) => ({ ...b, ok: false, errorCode: 'not-configured' })) };
+  }
+  if (rows.length === 0) return { configured: true, results: [] };
+  try {
+    const res = await client.sendEachForMulticast(buildFcmMessage(rows.map((r) => r.token), payload));
+    return {
+      configured: true,
+      results: res.responses.map((r, i) => ({
+        ...base[i],
+        ok: r.success,
+        errorCode: r.error?.code,
+        errorMessage: r.error?.message,
+      })),
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { configured: true, results: base.map((b) => ({ ...b, ok: false, errorCode: 'send-failed', errorMessage: message })) };
+  }
+}
