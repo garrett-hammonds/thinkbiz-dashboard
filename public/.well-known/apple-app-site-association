@@ -2,7 +2,7 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["TEAMID.solutions.thinkbiz.app"],
+        "appIDs": ["N532RM9A6P.solutions.thinkbiz.app"],
         "components": [
           { "/": "/privacy*", "exclude": true },
           { "/": "/terms*", "exclude": true },
@@ -28,6 +28,6 @@
     ]
   },
   "webcredentials": {
-    "apps": ["TEAMID.solutions.thinkbiz.app"]
+    "apps": ["N532RM9A6P.solutions.thinkbiz.app"]
   }
 }
