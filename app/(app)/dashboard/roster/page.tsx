@@ -5,7 +5,7 @@ import { getMemberForUser } from '@/utils/supabase/getMember';
 import { getActiveClubId } from '@/utils/activeClub';
 import { isBillingEnabled } from '@/lib/stripe/client';
 import { isMemberPaid, isPaywallExempt } from '@/utils/membership';
-import { RosterTable, type RosterRow } from './RosterTable';
+import { RosterTable, type RosterRow, type SeatOption } from './RosterTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,7 +97,7 @@ export default async function RosterPage() {
     serviceRoleKey,
   );
 
-  const [{ data: membersData }, { data: clubData }, signedInIds] =
+  const [{ data: membersData }, { data: clubData }, { data: seatsData }, signedInIds] =
     await Promise.all([
       admin
         .from('members')
@@ -112,10 +112,28 @@ export default async function RosterPage() {
         .select('name, display_name')
         .eq('id', activeClubId)
         .maybeSingle(),
+      admin
+        .from('club_seats')
+        .select('id, industry, status, member_id, sort_order')
+        .eq('club_id', activeClubId)
+        .order('sort_order', { ascending: true, nullsFirst: false }),
       fetchSignedInUserIds(admin),
     ]);
 
   const clubName = clubData?.display_name || clubData?.name || 'your club';
+
+  // Industry seats drive the marketing website's Member Directory. Directors
+  // assign each member to one; only open seats are offered.
+  const seats = seatsData || [];
+  const seatByMember = new Map<string, SeatOption>();
+  for (const s of seats) {
+    if (s.status === 'filled' && s.member_id) {
+      seatByMember.set(s.member_id, { id: s.id, industry: s.industry });
+    }
+  }
+  const openSeats: SeatOption[] = seats
+    .filter((s) => s.status === 'open' && !s.member_id)
+    .map((s) => ({ id: s.id, industry: s.industry }));
 
   const rows: RosterRow[] = (membersData || []).map((m) => ({
     id: m.id,
@@ -138,6 +156,7 @@ export default async function RosterPage() {
     removable:
       m.id !== member.id &&
       (!!member.is_admin || (!m.is_admin && !m.club_director)),
+    seat: seatByMember.get(m.id) ?? null,
   }));
 
   return (
@@ -147,11 +166,12 @@ export default async function RosterPage() {
           {clubName} Roster
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Your active club members, and who has joined the app.
+          Your active club members, and who has joined the app. Give each member
+          their industry seat to list them in the website&apos;s Member Directory.
         </p>
       </div>
 
-      <RosterTable rows={rows} showPayment={isBillingEnabled()} />
+      <RosterTable rows={rows} openSeats={openSeats} showPayment={isBillingEnabled()} />
     </RosterShell>
   );
 }

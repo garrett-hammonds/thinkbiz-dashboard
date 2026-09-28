@@ -18,7 +18,15 @@ import {
 } from 'lucide-react';
 import { resendInvite } from '@/app/actions/resendInvite';
 import { removeMember } from '@/app/actions/removeMember';
+import { assignSeat } from '@/app/actions/seats';
 import { Modal } from '@/components/Modal';
+
+// An industry seat in the club. Seats drive the marketing website's Member
+// Directory: a member is listed there under the seat they hold.
+export interface SeatOption {
+  id: string;
+  industry: string;
+}
 
 export interface RosterRow {
   id: string;
@@ -38,6 +46,8 @@ export interface RosterRow {
   // Whether the viewer is allowed to remove this member from the roster
   // (never themselves; directors can't remove fellow directors or admins).
   removable: boolean;
+  // The industry seat this member holds in the club, if any.
+  seat: SeatOption | null;
 }
 
 type StatusFilter = 'all' | 'joined' | 'not_joined';
@@ -50,7 +60,15 @@ function initials(name: string): string {
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 }
 
-export function RosterTable({ rows, showPayment = false }: { rows: RosterRow[]; showPayment?: boolean }) {
+export function RosterTable({
+  rows,
+  openSeats,
+  showPayment = false,
+}: {
+  rows: RosterRow[];
+  openSeats: SeatOption[];
+  showPayment?: boolean;
+}) {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
@@ -237,6 +255,7 @@ export function RosterTable({ rows, showPayment = false }: { rows: RosterRow[]; 
                 <th className="px-6 py-3">Member</th>
                 <th className="px-6 py-3">Contact</th>
                 <th className="px-6 py-3">Company</th>
+                <th className="px-6 py-3">Seat</th>
                 <th className="px-6 py-3">App status</th>
                 {showPayment && <th className="px-6 py-3">Payment</th>}
               </tr>
@@ -288,6 +307,9 @@ export function RosterTable({ rows, showPayment = false }: { rows: RosterRow[]; 
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     {r.company || <span className="text-gray-400">—</span>}
+                  </td>
+                  <td className="px-6 py-4">
+                    <SeatSelect row={r} openSeats={openSeats} />
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col items-start gap-2">
@@ -351,6 +373,7 @@ export function RosterTable({ rows, showPayment = false }: { rows: RosterRow[]; 
                     </div>
                   )}
                 </div>
+                <SeatSelect row={r} openSeats={openSeats} />
               </div>
             ))}
           </div>
@@ -455,6 +478,62 @@ function Avatar({ name, headshot }: { name: string; headshot: string | null }) {
   return (
     <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
       {initials(name)}
+    </div>
+  );
+}
+
+// Picks the member's industry seat. Lists the seat they hold (if any) plus the
+// club's open seats; choosing "No seat" releases theirs. The website's Member
+// Directory reflects the change within about a minute.
+function SeatSelect({ row, openSeats }: { row: RosterRow; openSeats: SeatOption[] }) {
+  const router = useRouter();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const options = row.seat
+    ? [row.seat, ...openSeats].sort((a, b) => a.industry.localeCompare(b.industry))
+    : [...openSeats].sort((a, b) => a.industry.localeCompare(b.industry));
+
+  async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const next = e.target.value || null;
+    if (saving || next === (row.seat?.id ?? null)) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const result = await assignSeat(row.id, next);
+      if (result.success) {
+        router.refresh();
+      } else {
+        setError(result.message || 'Could not update the seat.');
+        router.refresh();
+      }
+    } catch {
+      setError('Something went wrong. Try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <div className="flex items-center gap-2">
+        <select
+          value={row.seat?.id ?? ''}
+          onChange={handleChange}
+          disabled={saving}
+          aria-label={`Industry seat for ${row.name}`}
+          className="max-w-56 rounded-lg border border-gray-200 bg-white py-1.5 pl-2 pr-8 text-sm text-gray-900 outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <option value="">No seat</option>
+          {options.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.industry}
+            </option>
+          ))}
+        </select>
+        {saving && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
+      </div>
+      {error && <span className="max-w-56 text-xs text-red-600">{error}</span>}
     </div>
   );
 }
