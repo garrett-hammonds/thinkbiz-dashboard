@@ -96,6 +96,12 @@ URLs, so make sure it points at the real deployed origin in production.
 5. Cancel the subscription from Stripe → the `customer.subscription.deleted`
    webhook flips them back to unpaid and the gate re-engages.
 
+**Website visibility follows the subscription.** A database trigger
+(`supabase/migrations/20260928140506_members_public_follows_subscription.sql`)
+sets `members.is_public` whenever `subscription_status` changes: `active` shows
+the member on the marketing website, `canceled` hides them. Other statuses
+(`past_due`, none, billing-exempt members) leave `is_public` as it is.
+
 ## Existing subscribers (reuse an existing price)
 
 If members are already subscribed to your membership price (e.g. set up through
