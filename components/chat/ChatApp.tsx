@@ -645,6 +645,7 @@ export function ChatApp({
                 directory={directory}
                 authUserId={me.authUserId}
                 channelName={activeChannel.name}
+                draftKey={activeChannel.id}
                 onSend={handleSend}
               />
             )}
