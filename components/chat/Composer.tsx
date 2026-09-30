@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import imageCompression from "browser-image-compression";
-import { FileText, ImagePlus, Loader2, Paperclip, Send, Smile, X } from "lucide-react";
+import { ArrowUp, FileText, ImagePlus, Loader2, Paperclip, Plus, Smile, X } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import type { ChatAttachment, ChatMember } from "./types";
 import { memberName } from "./types";
@@ -22,6 +22,9 @@ type Props = {
   directory: ChatMember[];
   authUserId: string;
   channelName: string;
+  // Identifies the conversation, so an unsent draft survives switching away
+  // and back (the composer is remounted per channel).
+  draftKey: string;
   onSend: (content: string, attachments: ChatAttachment[], mentions: string[]) => Promise<void>;
 };
 
@@ -41,6 +44,19 @@ type PendingAttachment = {
   attachment?: ChatAttachment;
 };
 
+// Unsent drafts per conversation, for the life of the tab.
+const drafts = new Map<string, { text: string; mentions: PendingMention[] }>();
+
+// Grows with the text up to this height, then scrolls (about six lines).
+const MAX_INPUT_HEIGHT_REM = 10;
+
+// Touch-first devices (phones, tablets, the native app): the keyboard's
+// return key inserts a newline and the send button sends, like every mobile
+// messaging app. With a physical keyboard Enter sends, Shift+Enter breaks.
+function isTouchFirst(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+}
+
 const COMPOSER_EMOJIS = [
   "😀", "😄", "😂", "🤣", "😊", "😉", "😍", "🥰",
   "😎", "🤔", "🤗", "😅", "😢", "😮", "😴", "🤯",
@@ -50,17 +66,38 @@ const COMPOSER_EMOJIS = [
   "🏆", "🎯", "🚀", "📅", "📞", "✉️", "☕", "🍕",
 ];
 
-export function Composer({ directory, authUserId, channelName, onSend }: Props) {
-  const [text, setText] = useState("");
+export function Composer({ directory, authUserId, channelName, draftKey, onSend }: Props) {
+  const [text, setTextState] = useState(() => drafts.get(draftKey)?.text ?? "");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingAttachment[]>([]);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [suggestions, setSuggestions] = useState<ChatMember[]>([]);
   const [highlighted, setHighlighted] = useState(0);
   const mentionQueryRef = useRef<{ start: number; query: string } | null>(null);
-  const pendingMentions = useRef<PendingMention[]>([]);
+  const pendingMentions = useRef<PendingMention[]>(drafts.get(draftKey)?.mentions ?? []);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const setText = (value: string) => {
+    setTextState(value);
+    if (value) drafts.set(draftKey, { text: value, mentions: pendingMentions.current });
+    else drafts.delete(draftKey);
+  };
+
+  // Auto-grow: fit the textarea to its content, capped at MAX_INPUT_HEIGHT_REM
+  // (then it scrolls). Measured in px against the live root font size, which
+  // scales with the viewport on phones.
+  useLayoutEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const max = MAX_INPUT_HEIGHT_REM * rootPx;
+    ta.style.height = "auto";
+    const next = Math.min(ta.scrollHeight, max);
+    ta.style.height = `${next}px`;
+    ta.style.overflowY = ta.scrollHeight > max ? "auto" : "hidden";
+  }, [text]);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -265,22 +302,34 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
       }
     }
 
+    // Clear the box right away (the message shows up in the list as soon as
+    // it's saved); put the text back if the send fails so nothing is lost.
+    const draftText = text;
+    const draftMentions = pendingMentions.current;
+    const attachmentsToSend = readyAttachments;
     setSending(true);
     setError(null);
+    pendingMentions.current = [];
+    setText("");
+    setSuggestions([]);
     try {
-      await onSend(content, readyAttachments, mentionIds);
-      setText("");
+      await onSend(content, attachmentsToSend, mentionIds);
       clearAttachments();
-      pendingMentions.current = [];
     } catch (err) {
+      pendingMentions.current = draftMentions;
+      setText(draftText);
       setError(err instanceof Error ? err.message : "Failed to send message.");
     } finally {
       setSending(false);
+      // Keep the keyboard up for the next message.
       textareaRef.current?.focus();
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Never act on keys that belong to an IME composition (e.g. picking a
+    // Japanese candidate or an autocorrect suggestion with Enter).
+    if (e.nativeEvent.isComposing) return;
     if (suggestions.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -302,13 +351,14 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
         return;
       }
     }
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !isTouchFirst()) {
       e.preventDefault();
       send();
     }
   };
 
   const atLimit = pending.length >= MAX_ATTACHMENTS;
+  const canSend = !sending && !uploading && (!!text.trim() || readyAttachments.length > 0);
 
   return (
     <div className="relative border-t border-gray-100 p-3">
@@ -317,6 +367,7 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
           {suggestions.map((m, i) => (
             <button
               key={m.id}
+              type="button"
               onMouseDown={(e) => {
                 e.preventDefault();
                 pickMention(m);
@@ -353,6 +404,8 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
                   </div>
                 )}
                 <button
+                  type="button"
+                  aria-label={`Remove ${p.name}`}
                   onClick={() => removePending(p.id)}
                   title="Remove attachment"
                   className="absolute right-0.5 top-0.5 rounded-full bg-black/50 p-0.5 text-white hover:bg-black/70"
@@ -383,6 +436,8 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
                   </p>
                 </div>
                 <button
+                  type="button"
+                  aria-label={`Remove ${p.name}`}
                   onClick={() => removePending(p.id)}
                   title="Remove attachment"
                   className="rounded p-1 text-gray-500 hover:bg-gray-200"
@@ -404,6 +459,7 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
             {COMPOSER_EMOJIS.map((emoji) => (
               <button
                 key={emoji}
+                type="button"
                 onMouseDown={(e) => {
                   e.preventDefault();
                   insertEmoji(emoji);
@@ -417,10 +473,42 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
         </>
       )}
 
-      {/* Mobile sizing follows the platform messaging apps the members are used
-          to (tall rounded pill, base-size text, big round send button); lg:
-          reverts to the compact desktop composer. */}
-      <div className="flex items-end gap-1.5 lg:gap-2">
+      {showAttachMenu && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setShowAttachMenu(false)} />
+          <div className="absolute bottom-full left-3 z-20 mb-1 w-56 overflow-hidden rounded-xl border border-gray-100 bg-white py-1 shadow-card">
+            <button
+              type="button"
+              onClick={() => {
+                setShowAttachMenu(false);
+                imageInputRef.current?.click();
+              }}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left text-base text-gray-900 hover:bg-muted"
+            >
+              <ImagePlus className="h-5 w-5 text-primary" aria-hidden="true" />
+              Photos
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowAttachMenu(false);
+                fileInputRef.current?.click();
+              }}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left text-base text-gray-900 hover:bg-muted"
+            >
+              <Paperclip className="h-5 w-5 text-primary" aria-hidden="true" />
+              File
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Phones: one "+" (photos / file) on the left, the text field taking the
+          rest of the row, and a round send button — the emoji button is
+          dropped because the keyboard has one. Desktop keeps the direct
+          photo / file / emoji buttons. Buttons stay bottom-aligned as the
+          field grows. */}
+      <div className="flex items-end gap-2">
         <input
           ref={imageInputRef}
           type="file"
@@ -445,31 +533,56 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
             e.target.value = "";
           }}
         />
+
         <button
-          onClick={() => imageInputRef.current?.click()}
+          type="button"
+          onClick={() => setShowAttachMenu((v) => !v)}
           disabled={atLimit}
-          title={atLimit ? `Up to ${MAX_ATTACHMENTS} attachments` : "Attach photos"}
-          className="rounded-full p-3 text-gray-500 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50 lg:rounded-lg lg:p-2.5"
-        >
-          <ImagePlus className="h-6 w-6 lg:h-5 lg:w-5" />
-        </button>
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={atLimit}
-          title={atLimit ? `Up to ${MAX_ATTACHMENTS} attachments` : "Attach a file (PDF, CSV, …)"}
-          className="rounded-full p-3 text-gray-500 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50 lg:rounded-lg lg:p-2.5"
-        >
-          <Paperclip className="h-6 w-6 lg:h-5 lg:w-5" />
-        </button>
-        <button
-          onClick={() => setShowEmoji((v) => !v)}
-          title="Add emoji"
-          className={`rounded-full p-3 transition-colors hover:bg-muted hover:text-foreground lg:rounded-lg lg:p-2.5 ${
-            showEmoji ? "bg-muted text-foreground" : "text-gray-500"
+          aria-label="Add attachment"
+          aria-expanded={showAttachMenu}
+          title={atLimit ? `Up to ${MAX_ATTACHMENTS} attachments` : "Add photos or a file"}
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40 lg:hidden ${
+            showAttachMenu ? "bg-primary/10 text-primary" : "text-gray-500 hover:bg-muted"
           }`}
         >
-          <Smile className="h-6 w-6 lg:h-5 lg:w-5" />
+          <Plus className={`h-6 w-6 transition-transform ${showAttachMenu ? "rotate-45" : ""}`} />
         </button>
+
+        <div className="hidden shrink-0 items-center lg:flex">
+          <button
+            type="button"
+            onClick={() => imageInputRef.current?.click()}
+            disabled={atLimit}
+            aria-label="Attach photos"
+            title={atLimit ? `Up to ${MAX_ATTACHMENTS} attachments` : "Attach photos"}
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+          >
+            <ImagePlus className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={atLimit}
+            aria-label="Attach a file"
+            title={atLimit ? `Up to ${MAX_ATTACHMENTS} attachments` : "Attach a file (PDF, CSV, …)"}
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+          >
+            <Paperclip className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowEmoji((v) => !v)}
+            aria-label="Add emoji"
+            aria-expanded={showEmoji}
+            title="Add emoji"
+            className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors hover:bg-muted hover:text-foreground ${
+              showEmoji ? "bg-muted text-foreground" : "text-gray-500"
+            }`}
+          >
+            <Smile className="h-5 w-5" />
+          </button>
+        </div>
+
         <textarea
           ref={textareaRef}
           value={text}
@@ -479,16 +592,26 @@ export function Composer({ directory, authUserId, channelName, onSend }: Props) 
           }}
           onKeyDown={handleKeyDown}
           rows={1}
+          aria-label={`Message ${channelName}`}
           placeholder={uploading ? "Uploading…" : `Message ${channelName}`}
-          className="max-h-40 min-h-[3.25rem] flex-1 resize-none rounded-3xl border border-gray-300 px-4 py-3.5 text-base leading-relaxed focus:border-primary focus:outline-none lg:min-h-[44px] lg:resize-y lg:rounded-lg lg:border-gray-200 lg:px-3 lg:py-2.5 lg:text-sm"
+          autoCapitalize="sentences"
+          autoCorrect="on"
+          spellCheck
+          enterKeyHint="enter"
+          className="block min-h-11 min-w-0 flex-1 resize-none overflow-y-hidden rounded-[1.375rem] border border-gray-300 bg-white px-4 py-2.5 text-base leading-6 placeholder:text-gray-400 focus:border-primary focus:outline-none lg:min-h-10 lg:rounded-lg lg:border-gray-200 lg:px-3 lg:py-2 lg:text-sm"
         />
+
         <button
+          type="button"
+          // Keep focus (and the phone keyboard) in the text field on tap.
+          onMouseDown={(e) => e.preventDefault()}
           onClick={send}
-          disabled={sending || uploading || (!text.trim() && readyAttachments.length === 0)}
+          disabled={!canSend}
+          aria-label="Send message"
           title="Send message"
-          className="rounded-full bg-primary p-3.5 text-white transition-colors hover:bg-secondary disabled:opacity-50 lg:rounded-lg lg:p-2.5"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-secondary disabled:bg-gray-200 disabled:text-gray-400 lg:h-10 lg:w-10 lg:rounded-lg"
         >
-          <Send className="h-6 w-6 lg:h-5 lg:w-5" />
+          {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowUp className="h-6 w-6 lg:h-5 lg:w-5" />}
         </button>
       </div>
     </div>
