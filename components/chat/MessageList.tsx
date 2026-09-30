@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Pencil, Trash2, SmilePlus } from "lucide-react";
+import { Pencil, Trash2, SmilePlus, Flag } from "lucide-react";
 import type { ChatMember, ChatMessage, Me } from "./types";
 import { memberName, REACTION_EMOJIS } from "./types";
 import { Attachments } from "./Attachments";
@@ -18,6 +18,7 @@ type Props = {
   onEdit: (messageId: string, content: string) => void;
   onDelete: (messageId: string) => void;
   onToggleReaction: (messageId: string, emoji: string) => void;
+  onReport: (message: ChatMessage) => void;
 };
 
 const MENTION_TOKEN = /<@([0-9a-fA-F-]{36})>/g;
@@ -93,11 +94,14 @@ export function MessageList({
   onEdit,
   onDelete,
   onToggleReaction,
+  onReport,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  // Touch screens have no hover: tapping a message pins its action bar open.
+  const [actionsFor, setActionsFor] = useState<string | null>(null);
   const lastMessageId = messages.length ? messages[messages.length - 1].id : null;
   const prevLastId = useRef<string | null>(null);
   const prevCount = useRef(0);
@@ -182,7 +186,13 @@ export function MessageList({
               </div>
             )}
 
-            <div className="group relative flex gap-3 px-2 py-1.5">
+            <div
+              className="group relative flex gap-3 px-2 py-1.5"
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest("button, a, textarea, input")) return;
+                setActionsFor(actionsFor === m.id ? null : m.id);
+              }}
+            >
               <Avatar member={sender} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
@@ -267,7 +277,11 @@ export function MessageList({
 
               {/* Hover actions */}
               {editingId !== m.id && (
-                <div className="absolute -top-3 right-2 hidden items-center gap-0.5 rounded-lg border border-gray-100 bg-white p-0.5 shadow-card group-hover:flex">
+                <div
+                  className={`absolute -top-3 right-2 items-center gap-0.5 rounded-lg border border-gray-100 bg-white p-0.5 shadow-card group-hover:flex ${
+                    actionsFor === m.id ? "flex" : "hidden"
+                  }`}
+                >
                   <button
                     onClick={() => setPickerFor(pickerFor === m.id ? null : m.id)}
                     title="Add reaction"
@@ -282,6 +296,19 @@ export function MessageList({
                       className="rounded p-1.5 text-gray-500 hover:bg-muted hover:text-foreground"
                     >
                       <Pencil className="h-4 w-4" />
+                    </button>
+                  )}
+                  {!isMine && (
+                    <button
+                      onClick={() => {
+                        setActionsFor(null);
+                        onReport(m);
+                      }}
+                      title="Report message"
+                      aria-label="Report message"
+                      className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <Flag className="h-4 w-4" />
                     </button>
                   )}
                   {canDeleteThis && (

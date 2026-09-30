@@ -7,6 +7,8 @@ import { isBillingEnabled } from '@/lib/stripe/client';
 import { isPaywallExempt } from '@/utils/membership';
 import { DEFAULT_PREFS, type NotificationPrefs } from '@/components/NotificationSettings';
 import DeleteAccountSection from '@/components/DeleteAccountSection';
+import BlockedMembersSection, { type BlockedMember } from '@/components/BlockedMembersSection';
+import { createAdminClient } from '@/utils/supabase/admin';
 import Link from 'next/link';
 
 export default async function ProfilePage() {
@@ -35,6 +37,25 @@ export default async function ProfilePage() {
     .eq('member_id', member.id)
     .maybeSingle();
 
+  // Members this member has blocked from DMing them (names via the service
+  // role: a blocked member may be outside the viewer's club).
+  const { data: blockRows } = await supabase
+    .from('member_dm_blocks')
+    .select('blocked_id')
+    .eq('blocker_id', member.id);
+  const blockedIds = (blockRows ?? []).map((b) => b.blocked_id as string);
+  let blockedMembers: BlockedMember[] = [];
+  if (blockedIds.length > 0) {
+    const { data: blockedRows } = await createAdminClient()
+      .from('members')
+      .select('id, first_name, last_name')
+      .in('id', blockedIds);
+    blockedMembers = (blockedRows ?? []).map((m) => ({
+      id: m.id as string,
+      name: `${m.first_name ?? ''} ${m.last_name ?? ''}`.trim() || 'Former member',
+    }));
+  }
+
   const prefs: NotificationPrefs = prefsRow
     ? {
         email_enabled: prefsRow.email_enabled,
@@ -62,6 +83,7 @@ export default async function ProfilePage() {
         )}
         <ProfileForm member={member} prefs={prefs} />
         <div className="max-w-3xl mx-auto">
+          <BlockedMembersSection initial={blockedMembers} />
           <DeleteAccountSection canDelete={!member.is_admin && !member.club_director} />
           <p className="text-center text-xs text-gray-400">
             <Link href="/privacy" className="hover:text-primary">Privacy Policy</Link>

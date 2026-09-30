@@ -13,6 +13,7 @@ import {
   User,
   LifeBuoy,
   LineChart,
+  Flag,
 } from "lucide-react";
 
 // Single source of truth for the sidebar navigation. Both the desktop rail and
@@ -85,6 +86,14 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/dashboard/applications",
     label: "Applications",
     icon: ClipboardList,
+    section: "manage",
+    gate: "canViewApps",
+    adminMark: true,
+  },
+  {
+    href: "/dashboard/chat-reports",
+    label: "Chat Reports",
+    icon: Flag,
     section: "manage",
     gate: "canViewApps",
     adminMark: true,
