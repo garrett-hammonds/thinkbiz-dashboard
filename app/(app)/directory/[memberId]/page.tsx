@@ -14,6 +14,7 @@ import { getMemberForUser } from '@/utils/supabase/getMember';
 import { membershipGateRedirect } from '@/utils/membership';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { getDirectoryProfile, type DirectoryClub } from '@/utils/supabase/directory';
+import { canModerateMember } from '@/lib/chat/safety';
 import { ProfileActions } from '@/components/directory/ProfileActions';
 
 export const dynamic = 'force-dynamic';
@@ -68,7 +69,13 @@ export default async function DirectoryProfilePage({
   }
 
   const admin = createAdminClient();
-  const [{ data: clubData }, { data: starRow }] = await Promise.all([
+  const [
+    { data: clubData },
+    { data: starRow },
+    { data: blockRows },
+    { data: targetRoles },
+    { data: suspension },
+  ] = await Promise.all([
     profile.current_club_id
       ? admin
           .from('clubs')
@@ -82,7 +89,24 @@ export default async function DirectoryProfilePage({
       .eq('member_id', viewer.id)
       .eq('starred_member_id', profile.id)
       .maybeSingle(),
+    // DM blocks between the two of us, either direction.
+    admin
+      .from('member_dm_blocks')
+      .select('blocker_id')
+      .or(
+        `and(blocker_id.eq.${viewer.id},blocked_id.eq.${profile.id}),and(blocker_id.eq.${profile.id},blocked_id.eq.${viewer.id})`,
+      ),
+    admin
+      .from('members')
+      .select('id, current_club_id, is_admin, club_director')
+      .eq('id', profile.id)
+      .maybeSingle(),
+    admin.from('chat_suspensions').select('member_id').eq('member_id', profile.id).maybeSingle(),
   ]);
+
+  const blockedByMe = (blockRows ?? []).some((b) => b.blocker_id === viewer.id);
+  const blockedMe = (blockRows ?? []).some((b) => b.blocker_id === profile.id);
+  const canSuspend = !!targetRoles && canModerateMember(viewer, targetRoles);
 
   const club = (clubData as DirectoryClub | null) ?? null;
   const isSelf = viewer.id === profile.id;
@@ -189,6 +213,10 @@ export default async function DirectoryProfilePage({
                   memberId={profile.id}
                   memberFirstName={profile.first_name}
                   initialStarred={!!starRow}
+                  initialBlocked={blockedByMe}
+                  blockedMe={blockedMe}
+                  canSuspend={canSuspend}
+                  initialSuspended={!!suspension}
                 />
               </div>
             )}

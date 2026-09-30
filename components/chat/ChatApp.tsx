@@ -1,14 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Hash, Lock, Plus, Compass, ArrowLeft, LogOut, User } from "lucide-react";
+import { Hash, Lock, Plus, Compass, ArrowLeft, LogOut, User, Ban } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { createChannel, getMyChatChannels, notifyChatMessage } from "@/app/actions/chat";
+import { setDmBlock } from "@/app/actions/chatSafety";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { Modal } from "@/components/Modal";
 import { MessageList } from "./MessageList";
 import { Composer } from "./Composer";
+import { ReportMessageModal } from "./ReportMessageModal";
 import type { ChatAttachment, ChatChannel, ChatMember, ChatMessage, ChatReaction, Me } from "./types";
+import { memberName } from "./types";
 
 const PAGE_SIZE = 50;
 
@@ -20,9 +23,24 @@ type Props = {
   // Deep link (e.g. the directory's "Message" button): open this conversation
   // immediately instead of defaulting to the club channel.
   initialActiveId?: string | null;
+  // Safety state (see the chat_safety migration): members I've blocked from
+  // DMing me, members who've blocked me, and whether a moderator has
+  // suspended me from posting.
+  initialBlockedIds: string[];
+  blockedByIds: string[];
+  suspended: boolean;
 };
 
-export function ChatApp({ me, initialChannels, directory, initialUnread, initialActiveId }: Props) {
+export function ChatApp({
+  me,
+  initialChannels,
+  directory,
+  initialUnread,
+  initialActiveId,
+  initialBlockedIds,
+  blockedByIds,
+  suspended,
+}: Props) {
   const supabase = useMemo(() => createClient(), []);
 
   const [channels, setChannels] = useState<ChatChannel[]>(initialChannels);
@@ -53,6 +71,10 @@ export function ChatApp({ me, initialChannels, directory, initialUnread, initial
   const [showCreate, setShowCreate] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [reportFor, setReportFor] = useState<ChatMessage | null>(null);
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(() => new Set(initialBlockedIds));
+  const [blockBusy, setBlockBusy] = useState(false);
+  const blockedBy = useMemo(() => new Set(blockedByIds), [blockedByIds]);
 
   const activeIdRef = useRef(activeId);
   const channelsRef = useRef(channels);
@@ -375,6 +397,37 @@ export function ChatApp({ me, initialChannels, directory, initialUnread, initial
     selectChannel(result.channelId);
   };
 
+  const dmPartnerId = activeChannel?.is_dm ? activeChannel.dm_partner_id : null;
+  const iBlockedPartner = !!dmPartnerId && blockedIds.has(dmPartnerId);
+  const partnerBlockedMe = !!dmPartnerId && blockedBy.has(dmPartnerId);
+
+  const handleToggleBlock = async () => {
+    if (!dmPartnerId || blockBusy) return;
+    const next = !iBlockedPartner;
+    const name = memberName(directoryMap.get(dmPartnerId));
+    if (
+      next &&
+      !window.confirm(
+        `Block ${name} from messaging you? Neither of you will be able to send messages in this conversation until you unblock them.`
+      )
+    ) {
+      return;
+    }
+    setBlockBusy(true);
+    const result = await setDmBlock(dmPartnerId, next);
+    setBlockBusy(false);
+    if (!result.success) {
+      window.alert(result.message || "Could not update the block. Please try again.");
+      return;
+    }
+    setBlockedIds((prev) => {
+      const copy = new Set(prev);
+      if (next) copy.add(dmPartnerId);
+      else copy.delete(dmPartnerId);
+      return copy;
+    });
+  };
+
   const canModerate = !!(
     me.isAdmin ||
     (me.isDirector && activeChannel?.club_id && activeChannel.club_id === me.clubId)
@@ -543,6 +596,21 @@ export function ChatApp({ me, initialChannels, directory, initialUnread, initial
                   )
                 )}
               </div>
+              {dmPartnerId && (
+                <button
+                  type="button"
+                  onClick={handleToggleBlock}
+                  disabled={blockBusy}
+                  className={`ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50 ${
+                    iBlockedPartner
+                      ? "text-primary hover:bg-primary/10"
+                      : "text-gray-500 hover:bg-red-50 hover:text-red-600"
+                  }`}
+                >
+                  <Ban className="h-4 w-4" aria-hidden="true" />
+                  {iBlockedPartner ? "Unblock" : "Block"}
+                </button>
+              )}
             </div>
 
             <MessageList
@@ -557,15 +625,29 @@ export function ChatApp({ me, initialChannels, directory, initialUnread, initial
               onEdit={handleEdit}
               onDelete={handleDelete}
               onToggleReaction={handleToggleReaction}
+              onReport={setReportFor}
             />
 
-            <Composer
-              key={activeChannel.id}
-              directory={directory}
-              authUserId={me.authUserId}
-              channelName={activeChannel.name}
-              onSend={handleSend}
-            />
+            {suspended ? (
+              <ComposerNotice>
+                A club director or ThinkBiz admin has suspended you from posting in chat. Contact
+                your club director if you have questions.
+              </ComposerNotice>
+            ) : iBlockedPartner ? (
+              <ComposerNotice>
+                You blocked {activeChannel.name}. Unblock them to send messages here.
+              </ComposerNotice>
+            ) : partnerBlockedMe ? (
+              <ComposerNotice>You can&apos;t send messages in this conversation.</ComposerNotice>
+            ) : (
+              <Composer
+                key={activeChannel.id}
+                directory={directory}
+                authUserId={me.authUserId}
+                channelName={activeChannel.name}
+                onSend={handleSend}
+              />
+            )}
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center p-8 text-center text-gray-500">
@@ -573,6 +655,14 @@ export function ChatApp({ me, initialChannels, directory, initialUnread, initial
           </div>
         )}
       </section>
+
+      {reportFor && (
+        <ReportMessageModal
+          message={reportFor}
+          authorName={memberName(directoryMap.get(reportFor.member_id))}
+          onClose={() => setReportFor(null)}
+        />
+      )}
 
       {/* Browse channels modal */}
       {showBrowse && (
@@ -646,6 +736,14 @@ export function ChatApp({ me, initialChannels, directory, initialUnread, initial
           </form>
         </Modal>
       )}
+    </div>
+  );
+}
+
+function ComposerNotice({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="border-t border-gray-100 bg-slate-50 px-4 py-4 text-center text-sm text-gray-500">
+      {children}
     </div>
   );
 }

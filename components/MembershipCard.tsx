@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Loader2, CreditCard, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { createBillingPortalSession } from '@/app/(app)/billing/actions';
 import { isNative, hostAdapter } from '@/lib/native/bridge';
+import { useIsNative } from '@/lib/native/useIsNative';
 
 interface MembershipCardProps {
   status: string | null;
@@ -27,6 +28,11 @@ function formatDate(iso: string | null): string | null {
 export default function MembershipCard({ status, billable, hasCustomer, periodEnd }: MembershipCardProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Inside the iOS / Android app the card is status-only: no portal, no
+  // start/restart link, no billing instructions (App Store Guideline 3.1.1).
+  // Null until hydration settles, treated like the app so nothing flashes.
+  const native = useIsNative();
+  const showBilling = native === false;
 
   const isActive = !!status && ACTIVE.includes(status);
   const isPastDue = status === 'past_due' || status === 'unpaid' || status === 'incomplete';
@@ -77,34 +83,37 @@ export default function MembershipCard({ status, billable, hasCustomer, periodEn
 
           {isPastDue && (
             <p className="mb-4 text-sm text-red-700">
-              Your last payment didn&apos;t go through. Update your card to keep your membership active.
+              Your last payment didn&apos;t go through.
+              {showBilling && ' Update your card to keep your membership active.'}
             </p>
           )}
 
-          <div className="flex flex-wrap gap-3">
-            {hasCustomer && (
-              <button
-                type="button"
-                onClick={openPortal}
-                disabled={loading}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-semibold text-white transition-colors hover:bg-secondary focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <CreditCard className="h-5 w-5" />}
-                {loading ? 'Opening…' : 'Manage membership'}
-              </button>
-            )}
+          {showBilling && (
+            <div className="flex flex-wrap gap-3">
+              {hasCustomer && (
+                <button
+                  type="button"
+                  onClick={openPortal}
+                  disabled={loading}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-semibold text-white transition-colors hover:bg-secondary focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <CreditCard className="h-5 w-5" />}
+                  {loading ? 'Opening…' : 'Manage membership'}
+                </button>
+              )}
 
-            {!isActive && (
-              <Link
-                href="/billing"
-                className="inline-flex items-center justify-center gap-2 rounded-lg border-2 border-primary px-6 py-3 font-semibold text-primary transition-colors hover:bg-primary hover:text-white"
-              >
-                {hasCustomer ? 'Restart membership' : 'Start membership'}
-              </Link>
-            )}
-          </div>
+              {!isActive && (
+                <Link
+                  href="/billing"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border-2 border-primary px-6 py-3 font-semibold text-primary transition-colors hover:bg-primary hover:text-white"
+                >
+                  {hasCustomer ? 'Restart membership' : 'Start membership'}
+                </Link>
+              )}
+            </div>
+          )}
 
-          {hasCustomer && (
+          {showBilling && hasCustomer && (
             <p className="mt-4 text-xs text-gray-400">
               Update your card, add a backup payment method, view invoices, or cancel — all in the
               secure Stripe portal.

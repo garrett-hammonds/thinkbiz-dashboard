@@ -74,6 +74,18 @@ export async function startDirectMessage(targetMemberId: string): Promise<void> 
     .maybeSingle();
   if (!targetMember) redirect('/directory');
 
+  // A DM block (either direction) means no conversation. The profile hides the
+  // Message button in that case; this is the server-side backstop.
+  const { data: block } = await admin
+    .from('member_dm_blocks')
+    .select('blocker_id')
+    .or(
+      `and(blocker_id.eq.${member.id},blocked_id.eq.${target}),and(blocker_id.eq.${target},blocked_id.eq.${member.id})`,
+    )
+    .limit(1)
+    .maybeSingle();
+  if (block) redirect(`/directory/${target}`);
+
   const dmKey = [member.id, target].sort().join(':');
 
   let channelId: string | null = null;

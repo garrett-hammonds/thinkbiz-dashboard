@@ -161,6 +161,33 @@ export function chatMentionEmail(opts: {
   };
 }
 
+// Sent to club directors and admins when a member reports a chat message.
+// Always sent (not subject to notification preferences): acting on reports
+// within 24 hours is part of the App Store user-generated-content rules.
+export function chatReportEmail(opts: {
+  reportedName: string;
+  reason: string;
+  where: string;
+  snippet: string;
+  url: string;
+}): RenderedEmail {
+  return {
+    subject: `Chat report: ${opts.reportedName} (${opts.reason})`,
+    html: layout({
+      heading: 'A chat message was reported',
+      paragraphs: [
+        `A member reported a message from <strong>${escapeHtml(opts.reportedName)}</strong> in ${escapeHtml(opts.where)} for <strong>${escapeHtml(opts.reason)}</strong>.`,
+        opts.snippet ? `<span style="color:#475569;">${escapeHtml(opts.snippet)}</span>` : '',
+        `Please review it within 24 hours: remove the message, suspend the member from chat, or dismiss the report.`,
+      ].filter(Boolean),
+      ctaLabel: 'Review report',
+      ctaUrl: opts.url,
+      footer: `You're receiving this because you moderate chat as a ${BRAND} director or admin.`,
+    }),
+    text: `A member reported a message from ${opts.reportedName} in ${opts.where} for ${opts.reason}.\n\n${opts.snippet}\n\nReview it within 24 hours: ${opts.url}`,
+  };
+}
+
 // Sent to a visitor right after they check in / pre-register. Introduces
 // membership + its benefits and invites them back to a future meeting. The CTA
 // points at the public application page. Non-transactional and best-effort:

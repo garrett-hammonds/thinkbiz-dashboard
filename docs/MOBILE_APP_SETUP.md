@@ -21,7 +21,8 @@ one-time operational steps** to get both apps into the stores.
 | Offline notice | `components/native/OfflineBanner.tsx` | Mid-session drop; the shell's bundled `www/error.html` covers a cold start with no network. |
 | Native push | `supabase/migrations/20260921000100_native_push_tokens.sql`, `app/actions/nativePush.ts`, `lib/native/push.ts`, `lib/notifications/push-native.ts` | FCM tokens per phone; `dispatchNotifications` fans out to browser push **and** phones. Needs `FIREBASE_SERVICE_ACCOUNT_JSON`. |
 | Push UI | `components/NotificationSettings.tsx`, `components/GettingStartedChecklist.tsx` | Inside the app, "Enable push" uses the OS prompt + FCM instead of the browser PushManager; the app counts as "installed". |
-| Stripe in the system browser | `app/(app)/billing/CheckoutButton.tsx`, `components/MembershipCard.tsx`, `app/(app)/billing/actions.ts`, `app/(app)/billing/return/route.ts`, `app/(app)/billing/success/route.ts` | Checkout / portal never run inside the WebView. Return URLs bounce through `/billing/return`, which opens `thinkbiz://return?to=…`. |
+| No purchasing in the app | `app/(app)/billing/MembershipOffer.tsx`, `components/MembershipCard.tsx`, `lib/native/useIsNative.ts` | App Store 3.1.1. Inside the shell `/billing` only says the membership isn't active (no checkout, perks pitch, or pointer to the website), and the profile card shows status only (no portal, no start/restart link). The web keeps Stripe Checkout and the portal. The system-browser checkout plumbing (`CheckoutButton`, `/billing/return`) stays for the web flow and is unreachable from the app. |
+| Chat safety (UGC) | `supabase/migrations/20260930000100_chat_safety.sql`, `app/actions/chatSafety.ts`, `components/chat/ReportMessageModal.tsx`, `components/chat/ChatGuidelines.tsx`, `app/(app)/dashboard/chat-reports/`, `components/directory/ProfileActions.tsx`, `components/BlockedMembersSection.tsx` | App Store 1.2. Members accept the chat guidelines (zero tolerance) once; report any message (flag on the message; tap it on a phone); block anyone from DMing them (DM header, directory profile; unblock on `/profile`). Reports email + push the reported member's club directors and all admins; they act at `/dashboard/chat-reports` (remove message, remove + suspend from chat, dismiss). Directors/admins can also suspend from a directory profile. Blocks and suspensions are enforced by RLS. |
 | Store compliance pages | `app/privacy/page.tsx`, `app/terms/page.tsx`, `app/(app)/support/page.tsx` | Public (no session). Linked from login, profile, support. |
 | Account deletion | `app/actions/deleteAccount.ts`, `components/DeleteAccountSection.tsx` (on `/profile`) | App Store 5.1.1(v) / Play account-deletion policy. Cancels Stripe, deletes tokens + prefs + headshot, scrubs PII, deletes the auth user. Directors/admins are refused (hand off first). |
 | Universal links / App Links | `public/.well-known/apple-app-site-association`, `public/.well-known/assetlinks.json` | Placeholders for the Apple Team ID and the Play signing fingerprint — see below. `next.config.ts` serves the Apple file as `application/json`; `proxy.ts` skips `/.well-known/`. |
@@ -34,6 +35,11 @@ one-time operational steps** to get both apps into the stores.
 Run `supabase/migrations/20260921000100_native_push_tokens.sql` (Supabase SQL
 editor or `supabase db push`). Adds `native_push_tokens` with RLS. Safe to run
 before the apps exist.
+
+Then run `supabase/migrations/20260930000100_chat_safety.sql` (chat
+reports, DM blocks, chat suspensions, guidelines acceptance). Run it before or
+right after deploying the chat-safety code: until it runs, chat works but
+reporting, blocking and the guidelines prompt don't.
 
 ## 2. Firebase (push for both platforms)
 
@@ -88,18 +94,25 @@ Excluded from the app on purpose (they open in the browser): `/apply`,
 | `NEXT_PUBLIC_NATIVE_SCHEME` | Vercel (optional, default `thinkbiz`) | Custom scheme the shell registers; must match `capacitor.config.ts`. |
 | `NEXT_PUBLIC_SITE_URL` | already set | Must be `https://app.thinkbiz.solutions` so Stripe return URLs and QR codes point at the host the app trusts. |
 
-## 5. Store review account
+## 5. Store review accounts
 
-Both stores need a working sign-in. The dashboard uses email + password, so
-no code path is needed: create a real member on a demo club (approve an
-application for e.g. `review@thinkbiz.solutions`, set `billing_exempt = true`
-so the paywall never blocks the reviewer, and complete onboarding). Put the
-email and password in App Review Information / Play "App access". Keep the
-account active for the life of the listing; reviews re-run on every update.
+Both stores need a working sign-in, and Apple wants credentials for **each
+account type** in the App Review notes. The dashboard uses email + password,
+so no code path is needed. On a demo club, create (approve an application,
+complete onboarding):
 
-Give the reviewer a director account as well (or make the review account a
-director of the demo club) so they can reach the attendance scanner, which is
-why the app asks for the camera.
+- **Member** — e.g. `review@thinkbiz.solutions`, `billing_exempt = true` so
+  the paywall never blocks the reviewer. Accept the chat guidelines once so
+  chat opens straight away (or leave it so the reviewer sees the prompt).
+- **Director** — e.g. `review-director@thinkbiz.solutions`, `club_director =
+  true` on the same club. Reaches the attendance scanner (why the app asks for
+  the camera) and `/dashboard/chat-reports`.
+- Seed the demo club's chat with a few messages from both, and a DM between
+  them, so report / block have something to act on.
+
+Record account deletion with a separate throwaway member, never the review
+accounts. Keep the review accounts active for the life of the listing;
+reviews re-run on every update.
 
 ## 6. What to say in the store forms
 
@@ -126,21 +139,30 @@ Camera: club directors scan members' check-in QR codes at meetings
 Notifications: chat messages, weekly log reminders, application updates —
 asked once on first launch, changeable on `/profile`.
 
-**Payments.** Membership dues are for participation in a real-world
-networking club (weekly in-person meetings, visitor programme, directory).
-They are billed through Stripe in the system browser, never inside the app's
-WebView, and the app never links to or promotes the external purchase from
-inside the WebView beyond the member's own billing page. This is the App Store
-Guideline 3.1.3(e) "goods and services consumed outside the app" position and
-Google Play's "physical goods or services" exception. If a reviewer pushes
-back, the fallback is to hide `CheckoutButton` inside the shell (gate on
-`isNative()`) and tell the member to activate on the website — keep
-`MembershipCard` as is (viewing status is always allowed).
+**Payments.** The app sells nothing and has no In-App Purchase products;
+the listing is Free. Membership dues cover a real-world networking club and
+are handled on the ThinkBiz website only. Inside the app there is no checkout,
+no billing portal, and no link or call to action pointing to either — an
+unpaid member just sees that their membership isn't active (Guideline
+3.1.1). Members can view their membership status and delete their account
+(which cancels any subscription).
 
-**Sign-up.** Anyone can apply from `/apply` (public, opens in the browser from
-the app's login page). Membership is by director approval, which is allowed
-for membership-organisation apps as long as the reviewer has a working
-account (section 5).
+**User-generated content.** Members chat in club channels and direct
+messages. Before first use they accept the chat guidelines (zero tolerance
+for objectionable content). Any message can be reported (flag on the
+message); any member can be blocked from direct messaging you (DM header or
+directory profile). Reports go by email and push to the club's directors and
+ThinkBiz admins, who review them within 24 hours at Chat Reports and can
+remove the message and suspend the member from chat.
+
+**Sign-up / audience (Guideline 3.2).** Anyone can apply from `/apply`
+(public, opens in the browser from the app's login page) to join a ThinkBiz
+club; clubs are open to local business owners and professionals, not one
+company's staff, so the app is a public App Store app. Membership is by
+director approval, which is allowed for membership-organisation apps as long
+as the reviewer has working accounts (section 5). If Apple still classes it
+as a single-organisation app, the fallback is Unlisted App Distribution (no
+code change).
 
 ## 7. Release checklist (per version)
 
@@ -151,9 +173,11 @@ account (section 5).
 3. iOS: Xcode → Product → Archive → Distribute (TestFlight first).
 4. Android: Android Studio → Build → Generate Signed Bundle (AAB) → Play
    Console internal testing first.
-5. Smoke test on a device: sign in, push permission, receive a chat push and
-   tap it, scan a QR, open a member's website (system browser), start
-   checkout (system browser) and return, delete a test account.
+5. Smoke test on a device (TestFlight build): sign in, push permission,
+   receive a chat push and tap it, report a message and block a member,
+   scan a QR, open a member's website (system browser), check an unpaid
+   member sees no checkout and the profile card has no billing buttons,
+   delete a test account.
 
 See the shell repo's README for the Xcode / Android Studio specifics,
 signing, and screenshots.

@@ -18,7 +18,7 @@ export default function PrivacyPage() {
     <DocPage
       title="Privacy Policy"
       intro="ThinkBiz is the web and mobile app for members of ThinkBiz Solutions professional networking clubs. This page explains what the app stores about you, who processes it, and how to remove it."
-      updated="September 21, 2026"
+      updated="September 30, 2026"
     >
       <section>
         <h2>Who runs this app</h2>
@@ -49,7 +49,11 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Chat.</strong> Messages and images you post in club channels and direct
-            messages, visible to the other members of that channel or conversation.
+            messages, visible to the other members of that channel or conversation. If you
+            report a message, a copy of it and your report go to your club&apos;s directors and
+            ThinkBiz admins for review (including a reported direct message). The member you
+            report is not told who reported them. The app also keeps the list of members you have
+            blocked from messaging you.
           </li>
           <li>
             <strong>Billing.</strong> If your club uses paid membership, your card details go

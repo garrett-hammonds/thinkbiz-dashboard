@@ -14,7 +14,7 @@ export default function TermsPage() {
     <DocPage
       title="Terms of Use"
       intro="Using the ThinkBiz app means you agree to the points below. They are short on purpose."
-      updated="September 21, 2026"
+      updated="September 30, 2026"
     >
       <section>
         <h2>Who may use it</h2>
@@ -40,13 +40,16 @@ export default function TermsPage() {
         <ul>
           <li>Keep your sign-in details to yourself and sign out on shared devices.</li>
           <li>Keep your profile and weekly logs honest; other members and directors rely on them.</li>
-          <li>Be respectful in chat. No harassment, spam, or content that is unlawful or that you do not have the right to share.</li>
+          <li>Be respectful in chat. No harassment, bullying, threats, hate speech, sexual or violent content, spam, or content that is unlawful or that you do not have the right to share.</li>
           <li>Use other members&apos; contact details only for club networking, never for bulk marketing.</li>
           <li>Do not attempt to access data or clubs you are not a member of.</li>
         </ul>
         <p>
-          Directors and admins may remove content or members that break these rules. You can
-          report a concern to <a href="mailto:team@thinkbiz.solutions">team@thinkbiz.solutions</a>.
+          We have zero tolerance for objectionable content and abusive members. You can report any
+          chat message from the message itself, block any member from sending you direct messages,
+          or email <a href="mailto:team@thinkbiz.solutions">team@thinkbiz.solutions</a>. Club
+          directors and ThinkBiz admins review reports within 24 hours, remove content that breaks
+          these rules, and may suspend or remove the member who posted it.
         </p>
       </section>
 
