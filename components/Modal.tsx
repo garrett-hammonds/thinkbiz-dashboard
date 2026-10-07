@@ -28,6 +28,17 @@ export function Modal({
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
+  // Callers usually pass an inline arrow (`onClose={() => setOpen(false)}`),
+  // which is a new function on every parent render. Reading it through a ref
+  // keeps the effect below mount-only: if it depended on `onClose` it would
+  // tear down and re-run on every keystroke in a field inside the dialog,
+  // yanking focus back to the first focusable (the close button). On iOS that
+  // dismisses the keyboard after each letter.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
 
@@ -39,7 +50,7 @@ export function Modal({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key === 'Tab' && panel) {
@@ -73,7 +84,7 @@ export function Modal({
       // Restore focus to whatever opened the dialog.
       previouslyFocused?.focus?.();
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <div

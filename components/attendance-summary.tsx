@@ -66,7 +66,7 @@ export function AttendanceSummary({
             <p className="text-base font-medium text-muted-foreground lg:text-sm">
               This week&apos;s attendance
             </p>
-            <p className="mt-1 text-3xl font-bold tracking-tight text-card-foreground lg:text-2xl">
+            <p className="mt-1 break-words text-2xl font-bold tracking-tight text-card-foreground sm:text-3xl lg:text-2xl">
               {thisWeek} of {rosterSize}
             </p>
             <p className="mt-0.5 text-sm text-muted-foreground lg:text-xs">

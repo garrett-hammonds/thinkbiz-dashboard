@@ -18,6 +18,7 @@ interface TurnstileApi {
       callback: (token: string) => void;
       "error-callback"?: () => void;
       "expired-callback"?: () => void;
+      size?: "normal" | "compact" | "flexible";
     },
   ) => string;
   remove: (widgetId: string) => void;
@@ -49,6 +50,9 @@ export function Turnstile({ onVerify }: { onVerify: (token: string | null) => vo
         callback: (token: string) => onVerify(token),
         "error-callback": () => onVerify(null),
         "expired-callback": () => onVerify(null),
+        // The normal widget is a fixed 300px wide, which spills out of the
+        // form card on most phones; the compact one is 150px.
+        size: containerRef.current.clientWidth < 300 ? "compact" : "normal",
       });
     };
 

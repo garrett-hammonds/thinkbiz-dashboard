@@ -104,7 +104,12 @@ export default async function ChatPage({
   };
 
   return (
-    <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 overflow-hidden px-0 lg:px-8 lg:py-4">
+    // data-fill-screen pins this page to one screen height (see globals.css)
+    // so the message list scrolls and the composer stays on screen.
+    <main
+      data-fill-screen
+      className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 overflow-hidden px-0 lg:px-8 lg:py-4"
+    >
       <ChatApp
         me={me}
         initialChannels={channels}
