@@ -48,7 +48,8 @@ export default async function ChatPage({
     );
   }
 
-  // Safety state: who I've blocked (own rows, RLS), who has blocked me and
+  // Safety state: who I've blocked (own rows, RLS; ChatApp leaves their
+  // messages out of every chat query), who has blocked me and
   // whether I'm suspended (service role — those rows aren't client-readable).
   const admin = createAdminClient();
   const [

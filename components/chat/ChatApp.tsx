@@ -72,7 +72,10 @@ export function ChatApp({
   const [createError, setCreateError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [reportFor, setReportFor] = useState<ChatMessage | null>(null);
+  // Members I've blocked: their messages are hidden from me everywhere in chat
+  // (filtered in the queries, the realtime handler and the render below).
   const [blockedIds, setBlockedIds] = useState<Set<string>>(() => new Set(initialBlockedIds));
+  const blockedIdsRef = useRef(blockedIds);
   const [blockBusy, setBlockBusy] = useState(false);
   const blockedBy = useMemo(() => new Set(blockedByIds), [blockedByIds]);
 
@@ -107,12 +110,23 @@ export function ChatApp({
     [supabase, me.memberId]
   );
 
-  const loadMessages = useCallback(
-    async (channelId: string) => {
-      const { data } = await supabase
+  // Messages of a channel, minus blocked members' (left out at the database,
+  // so they never reach the browser and pages stay full).
+  const messagesQuery = useCallback(
+    (channelId: string) => {
+      const query = supabase
         .from("chat_messages")
         .select("*, chat_message_reactions(member_id, emoji)")
-        .eq("channel_id", channelId)
+        .eq("channel_id", channelId);
+      const ids = [...blockedIdsRef.current];
+      return ids.length ? query.not("member_id", "in", `(${ids.join(",")})`) : query;
+    },
+    [supabase]
+  );
+
+  const loadMessages = useCallback(
+    async (channelId: string) => {
+      const { data } = await messagesQuery(channelId)
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);
 
@@ -122,7 +136,7 @@ export function ChatApp({
       setHasMore((data?.length ?? 0) === PAGE_SIZE);
       setLoadingMessages(false);
     },
-    [supabase]
+    [messagesQuery]
   );
 
   useEffect(() => {
@@ -135,10 +149,7 @@ export function ChatApp({
     const oldest = messages[0];
     if (!channelId || !oldest) return;
     setLoadingEarlier(true);
-    const { data } = await supabase
-      .from("chat_messages")
-      .select("*, chat_message_reactions(member_id, emoji)")
-      .eq("channel_id", channelId)
+    const { data } = await messagesQuery(channelId)
       .lt("created_at", oldest.created_at)
       .order("created_at", { ascending: false })
       .limit(PAGE_SIZE);
@@ -149,13 +160,15 @@ export function ChatApp({
       setHasMore((data?.length ?? 0) === PAGE_SIZE);
     }
     setLoadingEarlier(false);
-  }, [supabase, messages]);
+  }, [messagesQuery, messages]);
 
   // Realtime: messages and reactions across all channels we can see (RLS-filtered)
   useEffect(() => {
     const handleMessage = (payload: RealtimePostgresChangesPayload<ChatMessage>) => {
       if (payload.eventType === "INSERT") {
         const msg = { ...(payload.new as ChatMessage), chat_message_reactions: [] };
+        // Blocked author: don't show it, count it as unread, or surface it.
+        if (blockedIdsRef.current.has(msg.member_id)) return;
         if (msg.channel_id === activeIdRef.current) {
           setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
           if (msg.member_id !== me.memberId) markRead(msg.channel_id);
@@ -401,32 +414,59 @@ export function ChatApp({
   const iBlockedPartner = !!dmPartnerId && blockedIds.has(dmPartnerId);
   const partnerBlockedMe = !!dmPartnerId && blockedBy.has(dmPartnerId);
 
-  const handleToggleBlock = async () => {
-    if (!dmPartnerId || blockBusy) return;
-    const next = !iBlockedPartner;
-    const name = memberName(directoryMap.get(dmPartnerId));
+  // Block or unblock a member (from a DM header or a message's actions). A
+  // block hides their messages at once; an unblock reloads the open
+  // conversation to bring them back, since they were never fetched.
+  const setBlock = async (memberId: string, next: boolean) => {
+    if (blockBusy || memberId === me.memberId) return;
+    const name = memberName(directoryMap.get(memberId));
     if (
       next &&
       !window.confirm(
-        `Block ${name} from messaging you? Neither of you will be able to send messages in this conversation until you unblock them.`
+        `Block ${name}? Their messages will be hidden from you everywhere in chat, neither of you will be able to send direct messages to the other, and ThinkBiz will be notified. You can unblock them anytime from your Profile.`
       )
     ) {
       return;
     }
     setBlockBusy(true);
-    const result = await setDmBlock(dmPartnerId, next);
+    const result = await setDmBlock(memberId, next);
     setBlockBusy(false);
     if (!result.success) {
       window.alert(result.message || "Could not update the block. Please try again.");
       return;
     }
-    setBlockedIds((prev) => {
-      const copy = new Set(prev);
-      if (next) copy.add(dmPartnerId);
-      else copy.delete(dmPartnerId);
-      return copy;
-    });
+    const copy = new Set(blockedIdsRef.current);
+    if (next) copy.add(memberId);
+    else copy.delete(memberId);
+    blockedIdsRef.current = copy;
+    setBlockedIds(copy);
+    if (!next && activeIdRef.current) void loadMessages(activeIdRef.current);
   };
+
+  const handleToggleBlock = () => {
+    if (dmPartnerId) void setBlock(dmPartnerId, !iBlockedPartner);
+  };
+
+  // Belt and braces over the query filter: hides a just-blocked member's
+  // messages (and reactions) without a refetch.
+  const visibleMessages = useMemo(
+    () =>
+      blockedIds.size === 0
+        ? messages
+        : messages
+            .filter((m) => !blockedIds.has(m.member_id))
+            .map((m) =>
+              m.chat_message_reactions.some((r) => blockedIds.has(r.member_id))
+                ? {
+                    ...m,
+                    chat_message_reactions: m.chat_message_reactions.filter(
+                      (r) => !blockedIds.has(r.member_id)
+                    ),
+                  }
+                : m
+            ),
+    [messages, blockedIds]
+  );
 
   const canModerate = !!(
     me.isAdmin ||
@@ -614,7 +654,7 @@ export function ChatApp({
             </div>
 
             <MessageList
-              messages={messages}
+              messages={visibleMessages}
               me={me}
               directoryMap={directoryMap}
               canModerate={canModerate}
@@ -626,6 +666,7 @@ export function ChatApp({
               onDelete={handleDelete}
               onToggleReaction={handleToggleReaction}
               onReport={setReportFor}
+              onBlock={(memberId) => void setBlock(memberId, true)}
             />
 
             {suspended ? (

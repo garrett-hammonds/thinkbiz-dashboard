@@ -6,7 +6,7 @@ import { createAdminClient } from '@/utils/supabase/admin';
 import { getMemberForUser } from '@/utils/supabase/getMember';
 import { dispatchNotifications } from '@/lib/notifications/dispatch';
 import { sendEmail } from '@/lib/email/client';
-import { chatReportEmail } from '@/lib/email/templates';
+import { chatBlockEmail, chatReportEmail } from '@/lib/email/templates';
 import {
   canModerateMember,
   REPORT_REASONS,
@@ -108,32 +108,26 @@ export async function reportChatMessage(
   return { success: true };
 }
 
-// Directors of the reported member's club (when they may moderate that member)
-// plus every admin, so a report is never stranded. Email goes out regardless
-// of notification preferences — acting on reports is not optional.
-async function notifyModeratorsOfReport(opts: {
-  reportedMemberId: string;
-  channelId: string;
-  reason: ReportReason;
-  snippet: string;
-}): Promise<void> {
+// Directors of the member's club (when they may moderate that member) plus
+// every admin, so a report or block is never stranded. Email goes out
+// regardless of notification preferences — acting on these is not optional.
+async function moderatorsFor(memberId: string) {
   const admin = createAdminClient();
-  const [{ data: reported }, { data: channel }, { data: admins }] = await Promise.all([
+  const [{ data: subject }, { data: admins }] = await Promise.all([
     admin
       .from('members')
       .select('id, first_name, last_name, current_club_id, is_admin, club_director')
-      .eq('id', opts.reportedMemberId)
+      .eq('id', memberId)
       .maybeSingle(),
-    admin.from('chat_channels').select('name, is_dm').eq('id', opts.channelId).maybeSingle(),
     admin.from('members').select('id, email').eq('is_admin', true).eq('is_active', true),
   ]);
 
   let directors: { id: string; email: string | null }[] = [];
-  if (reported?.current_club_id && !reported.is_admin && !reported.club_director) {
+  if (subject?.current_club_id && !subject.is_admin && !subject.club_director) {
     const { data } = await admin
       .from('members')
       .select('id, email')
-      .eq('current_club_id', reported.current_club_id)
+      .eq('current_club_id', subject.current_club_id)
       .eq('club_director', true)
       .eq('is_active', true);
     directors = (data ?? []) as { id: string; email: string | null }[];
@@ -143,47 +137,101 @@ async function notifyModeratorsOfReport(opts: {
   for (const r of [...directors, ...((admins ?? []) as { id: string; email: string | null }[])]) {
     recipients.set(r.id, r.email);
   }
-  if (recipients.size === 0) return;
+  const name = [subject?.first_name, subject?.last_name].filter(Boolean).join(' ').trim() || 'A member';
+  return { name, recipients };
+}
 
-  const reportedName =
-    [reported?.first_name, reported?.last_name].filter(Boolean).join(' ').trim() || 'A member';
+// Push to every recipient, plus one email per distinct address.
+async function sendToModerators(
+  recipients: Map<string, string | null>,
+  push: { title: string; body: string; url: string; tag: string },
+  email: { subject: string; html: string; text: string },
+): Promise<void> {
+  if (recipients.size === 0) return;
+  const addresses = new Set([...recipients.values()].filter((to): to is string => !!to));
+  await Promise.allSettled([
+    dispatchNotifications({ category: 'application', recipientMemberIds: [...recipients.keys()], push }),
+    ...[...addresses].map((to) => sendEmail({ to, ...email })),
+  ]);
+}
+
+async function notifyModeratorsOfReport(opts: {
+  reportedMemberId: string;
+  channelId: string;
+  reason: ReportReason;
+  snippet: string;
+}): Promise<void> {
+  const admin = createAdminClient();
+  const [{ name: reportedName, recipients }, { data: channel }] = await Promise.all([
+    moderatorsFor(opts.reportedMemberId),
+    admin.from('chat_channels').select('name, is_dm').eq('id', opts.channelId).maybeSingle(),
+  ]);
+
   const where = channel?.is_dm ? 'a direct message' : `#${channel?.name || 'chat'}`;
   const reasonLabel = reportReasonLabel(opts.reason);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
   const url = `${siteUrl}/dashboard/chat-reports`;
 
-  const email = chatReportEmail({ reportedName, reason: reasonLabel, where, snippet: opts.snippet, url });
-
-  await Promise.allSettled([
-    dispatchNotifications({
-      category: 'application',
-      recipientMemberIds: [...recipients.keys()],
-      push: {
-        title: 'Chat message reported',
-        body: `${reportedName} in ${where}: ${reasonLabel}`,
-        url,
-        tag: 'chat-report',
-      },
-    }),
-    ...[...recipients.values()]
-      .filter((to): to is string => !!to)
-      .map((to) => sendEmail({ to, ...email })),
-  ]);
+  await sendToModerators(
+    recipients,
+    {
+      title: 'Chat message reported',
+      body: `${reportedName} in ${where}: ${reasonLabel}`,
+      url,
+      tag: 'chat-report',
+    },
+    chatReportEmail({ reportedName, reason: reasonLabel, where, snippet: opts.snippet, url }),
+  );
 }
 
-// Any member can stop another member from direct messaging them. Blocking
-// is enforced in both directions inside that DM (see chat_dm_blocked()).
+// A block is a signal that a member may be abusive, so the same people who
+// review reports hear about it. The blocked member is never told, even when
+// they are an admin or director themselves.
+async function notifyModeratorsOfBlock(
+  blocker: { id: string; first_name?: string | null; last_name?: string | null },
+  blockedId: string,
+): Promise<void> {
+  const { name: blockedName, recipients } = await moderatorsFor(blockedId);
+  recipients.delete(blockedId);
+  recipients.delete(blocker.id);
+
+  const blockerName = [blocker.first_name, blocker.last_name].filter(Boolean).join(' ').trim() || 'A member';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const profileUrl = `${siteUrl}/directory/${blockedId}`;
+  const reportsUrl = `${siteUrl}/dashboard/chat-reports`;
+
+  await sendToModerators(
+    recipients,
+    {
+      title: 'Member blocked in chat',
+      body: `${blockerName} blocked ${blockedName}`,
+      url: profileUrl,
+      tag: 'chat-block',
+    },
+    chatBlockEmail({ blockerName, blockedName, at: new Date(), profileUrl, reportsUrl }),
+  );
+}
+
+// Any member can block another member. Blocking is enforced in both
+// directions inside their DM (see chat_dm_blocked()), and the chat client
+// hides the blocked member's messages everywhere for the blocker. A new block
+// notifies moderators (best-effort, never fails the block).
 export async function setDmBlock(targetMemberId: string, blocked: boolean): Promise<Result> {
   const ctx = await requireActiveMember();
   const target = (targetMemberId || '').trim();
   if (!ctx || !target || target === ctx.member.id) return { success: false };
 
   const admin = createAdminClient();
-  const { error } = blocked
-    ? await admin.from('member_dm_blocks').upsert(
-        { blocker_id: ctx.member.id, blocked_id: target },
-        { onConflict: 'blocker_id,blocked_id', ignoreDuplicates: true },
-      )
+  // ignoreDuplicates + select returns no row when the block already existed,
+  // so re-blocking doesn't notify again.
+  const { data: created, error } = blocked
+    ? await admin
+        .from('member_dm_blocks')
+        .upsert(
+          { blocker_id: ctx.member.id, blocked_id: target },
+          { onConflict: 'blocker_id,blocked_id', ignoreDuplicates: true },
+        )
+        .select('blocked_id')
     : await admin
         .from('member_dm_blocks')
         .delete()
@@ -193,6 +241,14 @@ export async function setDmBlock(targetMemberId: string, blocked: boolean): Prom
   if (error) {
     console.error('[setDmBlock] write failed:', error);
     return { success: false, message: 'Could not update the block. Please try again.' };
+  }
+
+  if (blocked && created && created.length > 0) {
+    try {
+      await notifyModeratorsOfBlock(ctx.member, target);
+    } catch (notifyError) {
+      console.error('[setDmBlock] moderator notification failed:', notifyError);
+    }
   }
 
   revalidatePath('/chat');

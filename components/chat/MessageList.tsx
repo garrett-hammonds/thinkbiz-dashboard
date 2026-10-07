@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Pencil, Trash2, SmilePlus, Flag } from "lucide-react";
+import { Pencil, Trash2, SmilePlus, Flag, Ban } from "lucide-react";
 import type { ChatMember, ChatMessage, Me } from "./types";
 import { memberName, REACTION_EMOJIS } from "./types";
 import { Attachments } from "./Attachments";
@@ -19,6 +19,7 @@ type Props = {
   onDelete: (messageId: string) => void;
   onToggleReaction: (messageId: string, emoji: string) => void;
   onReport: (message: ChatMessage) => void;
+  onBlock: (memberId: string) => void;
 };
 
 const MENTION_TOKEN = /<@([0-9a-fA-F-]{36})>/g;
@@ -95,6 +96,7 @@ export function MessageList({
   onDelete,
   onToggleReaction,
   onReport,
+  onBlock,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -309,6 +311,19 @@ export function MessageList({
                       className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
                     >
                       <Flag className="h-4 w-4" />
+                    </button>
+                  )}
+                  {!isMine && (
+                    <button
+                      onClick={() => {
+                        setActionsFor(null);
+                        onBlock(m.member_id);
+                      }}
+                      title={`Block ${sender?.first_name || "this member"}`}
+                      aria-label={`Block ${sender?.first_name || "this member"}`}
+                      className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <Ban className="h-4 w-4" />
                     </button>
                   )}
                   {canDeleteThis && (

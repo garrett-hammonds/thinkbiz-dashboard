@@ -9,7 +9,7 @@ type Props = {
   memberId: string;
   memberFirstName: string;
   initialStarred: boolean;
-  // The viewer has blocked this member from DMing them.
+  // The viewer has blocked this member (hidden in chat, no DMs either way).
   initialBlocked: boolean;
   // This member has blocked the viewer from DMing them.
   blockedMe: boolean;
@@ -19,8 +19,8 @@ type Props = {
 };
 
 // Member-to-member actions on a directory profile: DM (jump into a 1:1 chat),
-// star (bookmark for the directory's "Starred" filter), and block from
-// direct messages. Directors and admins also get a chat suspension toggle
+// star (bookmark for the directory's "Starred" filter), and block (hides
+// their chat messages from the viewer, stops DMs both ways). Directors and admins also get a chat suspension toggle
 // for members they moderate.
 export function ProfileActions({
   memberId,
@@ -57,7 +57,7 @@ export function ProfileActions({
     if (
       next &&
       !window.confirm(
-        `Block ${memberFirstName} from messaging you? Neither of you will be able to send direct messages to the other until you unblock them.`,
+        `Block ${memberFirstName}? Their messages will be hidden from you everywhere in chat, neither of you will be able to send direct messages to the other, and ThinkBiz will be notified. You can unblock them anytime from your Profile.`,
       )
     ) {
       return;
@@ -126,7 +126,7 @@ export function ProfileActions({
           className="inline-flex items-center gap-1.5 font-semibold text-gray-500 transition-colors hover:text-red-600 disabled:opacity-50"
         >
           <Ban className="h-4 w-4" aria-hidden="true" />
-          {blocked ? `Unblock ${memberFirstName}` : `Block ${memberFirstName} from messaging me`}
+          {blocked ? `Unblock ${memberFirstName}` : `Block ${memberFirstName}`}
         </button>
 
         {canSuspend && (
@@ -144,7 +144,8 @@ export function ProfileActions({
 
       {blocked && (
         <p className="text-sm text-gray-500">
-          You blocked {memberFirstName}. Neither of you can send direct messages to the other.
+          You blocked {memberFirstName}. Their messages are hidden from you in chat, and neither of
+          you can send direct messages to the other.
         </p>
       )}
       {!blocked && blockedMe && (
