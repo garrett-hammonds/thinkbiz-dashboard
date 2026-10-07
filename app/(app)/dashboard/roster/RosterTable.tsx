@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Search,
@@ -267,25 +268,18 @@ export function RosterTable({
                   className="border-b border-gray-50 last:border-0 transition-colors hover:bg-slate-50"
                 >
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={r.name} headshot={r.headshot} />
-                      <div>
-                        <div className="flex items-center gap-2 font-semibold text-foreground">
-                          {r.name}
-                          {(r.isAdmin || r.isDirector) && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-secondary/10 px-2 py-0.5 text-xs font-bold text-secondary">
-                              <Shield className="h-3 w-3" />
-                              {r.isAdmin ? 'Admin' : 'Director'}
-                            </span>
-                          )}
-                          {r.removable && (
-                            <RemoveMemberButton row={r} onClick={setPendingRemoval} />
-                          )}
-                        </div>
-                        {r.title && (
-                          <div className="text-sm text-gray-500">{r.title}</div>
+                    <div className="flex items-center gap-2">
+                      <MemberLink row={r}>
+                        {(r.isAdmin || r.isDirector) && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-secondary/10 px-2 py-0.5 text-xs font-bold text-secondary">
+                            <Shield className="h-3 w-3" />
+                            {r.isAdmin ? 'Admin' : 'Director'}
+                          </span>
                         )}
-                      </div>
+                      </MemberLink>
+                      {r.removable && (
+                        <RemoveMemberButton row={r} onClick={setPendingRemoval} />
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
@@ -332,19 +326,11 @@ export function RosterTable({
             {filtered.map((r) => (
               <div key={r.id} className="flex flex-col gap-3 p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar name={r.name} headshot={r.headshot} />
-                    <div>
-                      <div className="flex items-center gap-2 font-semibold text-foreground">
-                        {r.name}
-                        {r.removable && (
-                          <RemoveMemberButton row={r} onClick={setPendingRemoval} />
-                        )}
-                      </div>
-                      {r.title && (
-                        <div className="text-sm text-gray-500">{r.title}</div>
-                      )}
-                    </div>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <MemberLink row={r} />
+                    {r.removable && (
+                      <RemoveMemberButton row={r} onClick={setPendingRemoval} />
+                    )}
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <StatusBadge joined={r.joined} />
@@ -420,6 +406,26 @@ export function RosterTable({
         </Modal>
       )}
     </div>
+  );
+}
+
+// Avatar + name + title, linking to the member's profile. `from=roster` makes
+// the profile's back link return here instead of the directory.
+function MemberLink({ row, children }: { row: RosterRow; children?: React.ReactNode }) {
+  return (
+    <Link
+      href={`/directory/${row.id}?from=roster`}
+      className="group flex min-w-0 items-center gap-3 rounded-lg"
+    >
+      <Avatar name={row.name} headshot={row.headshot} />
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 font-semibold text-foreground transition-colors group-hover:text-primary">
+          {row.name}
+          {children}
+        </div>
+        {row.title && <div className="text-sm text-gray-500">{row.title}</div>}
+      </div>
+    </Link>
   );
 }
 
