@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Shield } from "lucide-react";
+import { useFormStatus } from "react-dom";
+import { LogOut, Shield } from "lucide-react";
+import { logout } from "@/app/actions/profile";
 import { ClubSwitcher, type SwitcherClub } from "../ClubSwitcher";
 import {
   NAV_ITEMS,
@@ -214,6 +216,13 @@ export function SidebarNav({
                 {items.map((item) => (
                   <li key={item.href}>{renderLink(item)}</li>
                 ))}
+                {section === "account" && visibility.isLoggedIn && (
+                  <li>
+                    <form action={logout}>
+                      <LogoutButton large={large} collapsed={collapsed} />
+                    </form>
+                  </li>
+                )}
               </ul>
             </div>
           );
@@ -257,5 +266,42 @@ export function SidebarNav({
         </div>
       )}
     </div>
+  );
+}
+
+// Log out sits at the end of "Account & Help" so members don't have to dig
+// into My Account for it. Styled as a regular nav row (same sizes as
+// renderLink) rather than a loud button, so it isn't tapped by accident.
+function LogoutButton({ large, collapsed }: { large: boolean; collapsed: boolean }) {
+  const { pending } = useFormStatus();
+  const label = pending ? "Logging out…" : "Log out";
+
+  if (large) {
+    return (
+      <button
+        type="submit"
+        disabled={pending}
+        className="flex w-full items-center gap-3 rounded-lg border-l-2 border-transparent px-3 py-3 text-left text-xl font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-60"
+      >
+        <LogOut className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <span className="truncate">{label}</span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      title={collapsed ? "Log out" : undefined}
+      aria-label={collapsed ? "Log out" : undefined}
+      className={[
+        "flex w-full items-center rounded-lg border-l-2 border-transparent text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60",
+        collapsed ? "justify-center px-0 py-2.5" : "gap-2.5 px-3 py-2",
+      ].join(" ")}
+    >
+      <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+      {!collapsed && <span className="truncate">{label}</span>}
+    </button>
   );
 }
