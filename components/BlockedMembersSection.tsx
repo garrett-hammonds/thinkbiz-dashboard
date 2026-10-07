@@ -6,8 +6,8 @@ import { setDmBlock } from '@/app/actions/chatSafety';
 
 export type BlockedMember = { id: string; name: string };
 
-// Members the viewer has blocked from direct messaging them, with unblock.
-// Blocking itself happens in a DM's header or on a directory profile.
+// Members the viewer has blocked, with unblock. Blocking itself happens from a
+// chat message, a DM's header, or a directory profile.
 export default function BlockedMembersSection({ initial }: { initial: BlockedMember[] }) {
   const [blocked, setBlocked] = useState(initial);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -24,9 +24,11 @@ export default function BlockedMembersSection({ initial }: { initial: BlockedMem
     <div className="bg-white rounded-xl border border-gray-100 shadow-card p-8 mb-6">
       <h3 className="text-2xl font-bold leading-snug text-foreground mb-2">Blocked members</h3>
       <p className="text-sm text-gray-600 mb-6">
-        Blocked members can&apos;t send you direct messages. To block someone, open your conversation
-        with them or their directory profile and choose Block. To report a message, tap it in chat
-        and choose the flag.
+        You won&apos;t see messages from blocked members anywhere in chat, and neither of you can send
+        direct messages to the other. ThinkBiz is notified when you block someone. To block someone,
+        tap one of their messages in chat (or open your conversation with them or their directory
+        profile) and choose Block. To report a message, tap it in chat and choose the flag.
+        Unblocking brings their messages back.
       </p>
       {blocked.length === 0 ? (
         <p className="text-sm text-gray-500">You haven&apos;t blocked anyone.</p>

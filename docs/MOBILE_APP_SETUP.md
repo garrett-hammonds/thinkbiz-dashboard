@@ -22,7 +22,7 @@ one-time operational steps** to get both apps into the stores.
 | Native push | `supabase/migrations/20260921000100_native_push_tokens.sql`, `app/actions/nativePush.ts`, `lib/native/push.ts`, `lib/notifications/push-native.ts` | FCM tokens per phone; `dispatchNotifications` fans out to browser push **and** phones. Needs `FIREBASE_SERVICE_ACCOUNT_JSON`. |
 | Push UI | `components/NotificationSettings.tsx`, `components/GettingStartedChecklist.tsx` | Inside the app, "Enable push" uses the OS prompt + FCM instead of the browser PushManager; the app counts as "installed". |
 | No purchasing in the app | `app/(app)/billing/MembershipOffer.tsx`, `components/MembershipCard.tsx`, `lib/native/useIsNative.ts` | App Store 3.1.1. Inside the shell `/billing` only says the membership isn't active (no checkout, perks pitch, or pointer to the website), and the profile card shows status only (no portal, no start/restart link). The web keeps Stripe Checkout and the portal. The system-browser checkout plumbing (`CheckoutButton`, `/billing/return`) stays for the web flow and is unreachable from the app. |
-| Chat safety (UGC) | `supabase/migrations/20260930000100_chat_safety.sql`, `app/actions/chatSafety.ts`, `components/chat/ReportMessageModal.tsx`, `components/chat/ChatGuidelines.tsx`, `app/(app)/dashboard/chat-reports/`, `components/directory/ProfileActions.tsx`, `components/BlockedMembersSection.tsx` | App Store 1.2. Members accept the chat guidelines (zero tolerance) once; report any message (flag on the message; tap it on a phone); block anyone from DMing them (DM header, directory profile; unblock on `/profile`). Reports email + push the reported member's club directors and all admins; they act at `/dashboard/chat-reports` (remove message, remove + suspend from chat, dismiss). Directors/admins can also suspend from a directory profile. Blocks and suspensions are enforced by RLS. |
+| Chat safety (UGC) | `supabase/migrations/20260930000100_chat_safety.sql`, `app/actions/chatSafety.ts`, `components/chat/ReportMessageModal.tsx`, `components/chat/ChatGuidelines.tsx`, `app/(app)/dashboard/chat-reports/`, `components/directory/ProfileActions.tsx`, `components/BlockedMembersSection.tsx` | App Store 1.2. Members accept the chat guidelines (zero tolerance) once; report any message (flag on the message; tap it on a phone); block any member (block icon on their message, DM header, directory profile; unblock on `/profile`). A block instantly hides the blocked member's messages from the blocker everywhere in chat (channels, DMs, realtime, older pages, unread counts, push previews), stops DMs both ways, and emails + pushes the blocked member's club directors and all admins. Reports email + push the same people; they act at `/dashboard/chat-reports` (remove message, remove + suspend from chat, dismiss). Directors/admins can also suspend from a directory profile. DM blocks and suspensions are enforced by RLS. |
 | Store compliance pages | `app/privacy/page.tsx`, `app/terms/page.tsx`, `app/(app)/support/page.tsx` | Public (no session). Linked from login, profile, support. |
 | Account deletion | `app/actions/deleteAccount.ts`, `components/DeleteAccountSection.tsx` (on `/profile`) | App Store 5.1.1(v) / Play account-deletion policy. Cancels Stripe, deletes tokens + prefs + headshot, scrubs PII, deletes the auth user. Directors/admins are refused (hand off first). |
 | Universal links / App Links | `public/.well-known/apple-app-site-association`, `public/.well-known/assetlinks.json` | Placeholders for the Apple Team ID and the Play signing fingerprint — see below. `next.config.ts` serves the Apple file as `application/json`; `proxy.ts` skips `/.well-known/`. |
@@ -40,6 +40,11 @@ Then run `supabase/migrations/20260930000100_chat_safety.sql` (chat
 reports, DM blocks, chat suspensions, guidelines acceptance). Run it before or
 right after deploying the chat-safety code: until it runs, chat works but
 reporting, blocking and the guidelines prompt don't.
+
+Then run `supabase/migrations/20261007000100_chat_unread_hide_blocked.sql`
+(unread badges stop counting messages from members you've blocked). Until it
+runs, blocked members' messages are still hidden but can still bump the
+unread badge.
 
 ## 2. Firebase (push for both platforms)
 
@@ -150,10 +155,14 @@ unpaid member just sees that their membership isn't active (Guideline
 **User-generated content.** Members chat in club channels and direct
 messages. Before first use they accept the chat guidelines (zero tolerance
 for objectionable content). Any message can be reported (flag on the
-message); any member can be blocked from direct messaging you (DM header or
-directory profile). Reports go by email and push to the club's directors and
-ThinkBiz admins, who review them within 24 hours at Chat Reports and can
-remove the message and suspend the member from chat.
+message). Any member can be blocked (block icon on any of their messages, the
+DM header, or their directory profile): their messages disappear from the
+blocker's chat immediately, in every channel and DM, neither can direct
+message the other, and ThinkBiz is notified (email and push to the blocked
+member's club directors and ThinkBiz admins). Members can unblock from
+Profile. Reports go by email and push to the same people, who review them
+within 24 hours at Chat Reports and can remove the message and suspend the
+member from chat.
 
 **Sign-up / audience (Guideline 3.2).** Anyone can apply from `/apply`
 (public, opens in the browser from the app's login page) to join a ThinkBiz

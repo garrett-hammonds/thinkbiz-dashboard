@@ -188,6 +188,38 @@ export function chatReportEmail(opts: {
   };
 }
 
+// Sent to the blocked member's club directors and all admins when a member
+// blocks someone in chat (App Store Guideline 1.2: blocking notifies the
+// developer). Never sent to the blocked member.
+export function chatBlockEmail(opts: {
+  blockerName: string;
+  blockedName: string;
+  at: Date;
+  profileUrl: string;
+  reportsUrl: string;
+}): RenderedEmail {
+  const when = opts.at.toLocaleString('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'America/Chicago',
+    timeZoneName: 'short',
+  });
+  return {
+    subject: `Chat block: ${opts.blockerName} blocked ${opts.blockedName}`,
+    html: layout({
+      heading: 'A member was blocked in chat',
+      paragraphs: [
+        `<strong>${escapeHtml(opts.blockerName)}</strong> blocked <strong>${escapeHtml(opts.blockedName)}</strong> on ${escapeHtml(when)}. ${escapeHtml(opts.blockedName)}'s messages are now hidden from ${escapeHtml(opts.blockerName)} and neither can direct message the other.`,
+        `Blocking can signal abusive behaviour. Check for related reports at <a href="${escapeHtml(opts.reportsUrl)}" style="color:${PRIMARY};">Chat Reports</a>, and suspend the member from chat from their profile if needed.`,
+      ],
+      ctaLabel: `View ${opts.blockedName}'s profile`,
+      ctaUrl: opts.profileUrl,
+      footer: `You're receiving this because you moderate chat as a ${BRAND} director or admin.`,
+    }),
+    text: `${opts.blockerName} blocked ${opts.blockedName} on ${when}.\n\nProfile: ${opts.profileUrl}\nChat reports: ${opts.reportsUrl}`,
+  };
+}
+
 // Sent to a visitor right after they check in / pre-register. Introduces
 // membership + its benefits and invites them back to a future meeting. The CTA
 // points at the public application page. Non-transactional and best-effort:

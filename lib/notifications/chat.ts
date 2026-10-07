@@ -61,8 +61,14 @@ export async function dispatchChatMessageNotifications(messageId: string): Promi
     recipientIds = (channelMembers ?? []).map((m) => m.member_id as string);
   }
 
-  // Drop the author.
-  recipientIds = recipientIds.filter((id) => id !== message.member_id);
+  // Drop the author, and anyone who has blocked the author: the push body
+  // previews the message, and blocked members' content stays hidden.
+  const { data: blockers } = await admin
+    .from('member_dm_blocks')
+    .select('blocker_id')
+    .eq('blocked_id', message.member_id);
+  const blockedAuthor = new Set((blockers ?? []).map((b) => b.blocker_id as string));
+  recipientIds = recipientIds.filter((id) => id !== message.member_id && !blockedAuthor.has(id));
   if (recipientIds.length === 0) return;
 
   const mentionsList = (message.mentions ?? []) as string[];
