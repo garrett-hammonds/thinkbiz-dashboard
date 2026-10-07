@@ -1,13 +1,18 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { Ban, MessageSquare, ShieldOff, Star } from 'lucide-react';
+import { type ReactNode, useState, useTransition } from 'react';
+import Link from 'next/link';
+import { Ban, Mail, MessageSquare, Pencil, Phone, ShieldOff, Star } from 'lucide-react';
 import { startDirectMessage, toggleMemberStar } from '@/app/actions/directory';
 import { setChatSuspension, setDmBlock } from '@/app/actions/chatSafety';
 
 type Props = {
   memberId: string;
   memberFirstName: string;
+  email: string | null;
+  phone: string | null;
+  // Viewing your own profile: swap the member actions for an Edit shortcut.
+  isSelf: boolean;
   initialStarred: boolean;
   // The viewer has blocked this member (hidden in chat, no DMs either way).
   initialBlocked: boolean;
@@ -16,20 +21,32 @@ type Props = {
   // Director (own club) / admin moderation: suspend from posting in chat.
   canSuspend: boolean;
   initialSuspended: boolean;
+  // Avatar, name and title, shown above the quick actions.
+  header: ReactNode;
+  // Profile details rendered between the quick actions and the block/suspend
+  // rows (server-rendered, passed through).
+  children: ReactNode;
 };
 
-// Member-to-member actions on a directory profile: DM (jump into a 1:1 chat),
-// star (bookmark for the directory's "Starred" filter), and block (hides
-// their chat messages from the viewer, stops DMs both ways). Directors and admins also get a chat suspension toggle
-// for members they moderate.
+// The interactive frame of a directory profile, laid out like a messaging
+// app's contact page: round quick actions (message, call, email, star) under
+// the header, the profile details, then block and chat-suspension rows at the
+// bottom. Block hides their chat messages from the viewer and stops DMs both
+// ways; directors and admins also get a suspension toggle for members they
+// moderate.
 export function ProfileActions({
   memberId,
   memberFirstName,
+  email,
+  phone,
+  isSelf,
   initialStarred,
   initialBlocked,
   blockedMe,
   canSuspend,
   initialSuspended,
+  header,
+  children,
 }: Props) {
   const [starred, setStarred] = useState(initialStarred);
   const [blocked, setBlocked] = useState(initialBlocked);
@@ -89,71 +106,152 @@ export function ProfileActions({
   const canMessage = !blocked && !blockedMe;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-3">
-        {canMessage && (
-          <button
-            type="button"
-            onClick={handleDm}
-            disabled={openingDm}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 font-semibold text-white transition-colors hover:bg-secondary focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <MessageSquare className="h-4 w-4" aria-hidden="true" />
-            {openingDm ? 'Opening chat…' : `Message ${memberFirstName}`}
-          </button>
+    <>
+      <section className="rounded-xl border border-gray-100 bg-white px-5 py-8 shadow-card">
+        {header}
+        <div className="mt-6 flex flex-wrap justify-center gap-5 sm:gap-8">
+          {isSelf ? (
+            <QuickAction href="/profile" icon={<Pencil className="h-5 w-5" />} label="Edit profile" />
+          ) : (
+            <>
+              {canMessage && (
+                <QuickAction
+                  onClick={handleDm}
+                  disabled={openingDm}
+                  icon={<MessageSquare className="h-5 w-5" />}
+                  label={openingDm ? 'Opening…' : 'Message'}
+                  ariaLabel={`Send ${memberFirstName} a direct message`}
+                  primary
+                />
+              )}
+              {phone && (
+                <QuickAction
+                  href={`tel:${phone.replace(/[^+\d]/g, '')}`}
+                  icon={<Phone className="h-5 w-5" />}
+                  label="Call"
+                />
+              )}
+              {email && (
+                <QuickAction href={`mailto:${email}`} icon={<Mail className="h-5 w-5" />} label="Email" />
+              )}
+              <QuickAction
+                onClick={handleToggleStar}
+                pressed={starred}
+                icon={<Star className={`h-5 w-5 ${starred ? 'fill-current' : ''}`} />}
+                label={starred ? 'Starred' : 'Star'}
+              />
+            </>
+          )}
+        </div>
+
+        {!isSelf && (blocked || blockedMe || (canSuspend && suspended)) && (
+          <div className="mt-4 space-y-1 text-center text-sm text-gray-500">
+            {blocked && (
+              <p>
+                You blocked {memberFirstName}. Their messages are hidden from you in chat, and neither
+                of you can send direct messages to the other.
+              </p>
+            )}
+            {!blocked && blockedMe && <p>You can&apos;t send {memberFirstName} direct messages.</p>}
+            {canSuspend && suspended && <p>{memberFirstName} is suspended from posting in chat.</p>}
+          </div>
         )}
+      </section>
 
-        <button
-          type="button"
-          onClick={handleToggleStar}
-          aria-pressed={starred}
-          className={`inline-flex items-center gap-2 rounded-lg px-6 py-3 font-semibold transition-colors ${
-            starred
-              ? 'bg-accent text-gray-900 hover:bg-yellow-400'
-              : 'border-2 border-primary text-primary hover:bg-primary hover:text-white'
-          }`}
-        >
-          <Star className={`h-4 w-4 ${starred ? 'fill-current' : ''}`} aria-hidden="true" />
-          {starred ? 'Starred' : 'Star'}
-        </button>
-      </div>
+      {children}
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-        <button
-          type="button"
-          onClick={handleToggleBlock}
-          disabled={busy}
-          className="inline-flex items-center gap-1.5 font-semibold text-gray-500 transition-colors hover:text-red-600 disabled:opacity-50"
-        >
-          <Ban className="h-4 w-4" aria-hidden="true" />
-          {blocked ? `Unblock ${memberFirstName}` : `Block ${memberFirstName}`}
-        </button>
-
-        {canSuspend && (
+      {!isSelf && (
+        <section className="mt-3 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-card">
           <button
             type="button"
-            onClick={handleToggleSuspension}
+            onClick={handleToggleBlock}
             disabled={busy}
-            className="inline-flex items-center gap-1.5 font-semibold text-gray-500 transition-colors hover:text-red-600 disabled:opacity-50"
+            className="flex w-full items-center gap-5 px-5 py-4 text-left font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
           >
-            <ShieldOff className="h-4 w-4" aria-hidden="true" />
-            {suspended ? 'Lift chat suspension' : 'Suspend from chat'}
+            <Ban className="h-5 w-5 shrink-0" aria-hidden="true" />
+            {blocked ? `Unblock ${memberFirstName}` : `Block ${memberFirstName}`}
           </button>
-        )}
-      </div>
+          {canSuspend && (
+            <button
+              type="button"
+              onClick={handleToggleSuspension}
+              disabled={busy}
+              className="flex w-full items-center gap-5 border-t border-gray-100 px-5 py-4 text-left font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+            >
+              <ShieldOff className="h-5 w-5 shrink-0" aria-hidden="true" />
+              {suspended ? 'Lift chat suspension' : 'Suspend from chat'}
+            </button>
+          )}
+        </section>
+      )}
+    </>
+  );
+}
 
-      {blocked && (
-        <p className="text-sm text-gray-500">
-          You blocked {memberFirstName}. Their messages are hidden from you in chat, and neither of
-          you can send direct messages to the other.
-        </p>
-      )}
-      {!blocked && blockedMe && (
-        <p className="text-sm text-gray-500">You can&apos;t send {memberFirstName} direct messages.</p>
-      )}
-      {canSuspend && suspended && (
-        <p className="text-sm text-gray-500">{memberFirstName} is suspended from posting in chat.</p>
-      )}
-    </div>
+// A round icon button with a caption underneath. Renders a link when `href`
+// is set, otherwise a button.
+function QuickAction({
+  icon,
+  label,
+  href,
+  onClick,
+  disabled,
+  pressed,
+  primary,
+  ariaLabel,
+}: {
+  icon: ReactNode;
+  label: string;
+  href?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  pressed?: boolean;
+  // Solid fill for the main action (direct message).
+  primary?: boolean;
+  ariaLabel?: string;
+}) {
+  const circle = (
+    <span
+      className={`flex h-14 w-14 items-center justify-center rounded-full transition-colors ${
+        pressed
+          ? 'bg-accent text-gray-900'
+          : primary
+          ? 'bg-primary text-white group-hover:bg-secondary'
+          : 'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white'
+      }`}
+      aria-hidden="true"
+    >
+      {icon}
+    </span>
+  );
+  const caption = <span className="text-sm font-medium text-gray-700">{label}</span>;
+  const className =
+    'group flex w-16 flex-col items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50';
+
+  if (href) {
+    return href.startsWith('/') ? (
+      <Link href={href} className={className}>
+        {circle}
+        {caption}
+      </Link>
+    ) : (
+      <a href={href} className={className}>
+        {circle}
+        {caption}
+      </a>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={pressed}
+      aria-label={ariaLabel}
+      className={className}
+    >
+      {circle}
+      {caption}
+    </button>
   );
 }
