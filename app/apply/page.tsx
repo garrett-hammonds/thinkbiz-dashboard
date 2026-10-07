@@ -88,8 +88,8 @@ export default function ApplyPage() {
     };
 
     return (
-        <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gray-50">
-            <div className="w-full max-w-md bg-white rounded-xl border border-gray-100 shadow-card p-8 transition-all duration-200">
+        <main className="flex page-shell flex-col items-center justify-center px-4 pb-6 sm:px-6 bg-gray-50">
+            <div className="mt-6 w-full max-w-md bg-white rounded-xl border border-gray-100 shadow-card p-5 sm:p-8 transition-all duration-200">
                 {(step === 1 || step === 2) && (
                     <div className="text-xs font-bold uppercase mb-2 text-center text-gray-500">Step {step} of 2</div>
                 )}
@@ -145,8 +145,8 @@ export default function ApplyPage() {
                             <input type="text" name="coreSkills" value={formData.coreSkills} onChange={handleChange} className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors" required />
                         </div>
                         <Turnstile onVerify={onVerify} />
-                        <div className="flex space-x-4 pt-4">
-                            <button type="button" onClick={handleBack} className="w-full text-primary hover:bg-primary/10 rounded-lg px-4 py-2 font-semibold transition-colors duration-200">Back</button>
+                        <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:gap-4">
+                            <button type="button" onClick={handleBack} className="w-full text-primary hover:bg-primary/10 rounded-lg px-4 py-3 font-semibold transition-colors duration-200">Back</button>
                             <button type="submit" disabled={isSubmitting} className="w-full bg-primary text-white hover:bg-secondary rounded-lg px-6 py-3 font-semibold transition-colors duration-200 focus-visible:outline-primary disabled:opacity-50">
                                 {isSubmitting ? 'Submitting…' : 'Submit application'}
                             </button>

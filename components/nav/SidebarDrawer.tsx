@@ -36,6 +36,13 @@ export function SidebarDrawer({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
 
+  // Read through a ref so a new inline `onClose` on each parent render doesn't
+  // re-run the effect below and yank focus back to the first link.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   useEffect(() => {
     if (!open) return;
 
@@ -47,7 +54,7 @@ export function SidebarDrawer({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key === "Tab" && panel) {
@@ -80,7 +87,7 @@ export function SidebarDrawer({
       document.body.style.overflow = prevOverflow;
       previouslyFocused?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

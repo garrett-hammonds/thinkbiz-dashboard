@@ -195,8 +195,8 @@ export function MessageList({
             >
               <Avatar member={sender} />
               <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-sm font-bold text-foreground">{memberName(sender)}</span>
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="min-w-0 break-words text-sm font-bold text-foreground">{memberName(sender)}</span>
                   <span className="text-xs text-gray-500">{timeLabel(m.created_at)}</span>
                   {m.edited_at && <span className="text-xs italic text-gray-400">(edited)</span>}
                 </div>

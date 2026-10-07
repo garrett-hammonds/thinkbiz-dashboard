@@ -55,7 +55,7 @@ export default async function ConfirmPage({
   const safeNext = safeNextPath(next);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="page-shell bg-background flex flex-col">
       <main className="flex flex-1 items-center justify-center p-4">
         <div className="w-full max-w-sm bg-white rounded-xl border border-gray-100 shadow-card p-8 text-center">
           <h1 className="text-3xl font-bold leading-snug text-foreground mb-2">{copy.heading}</h1>

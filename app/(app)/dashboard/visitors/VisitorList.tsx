@@ -249,8 +249,8 @@ function Contact({ email, phone }: { email: string | null; phone: string | null 
     <div className="flex flex-col gap-1">
       {email && (
         <a href={`mailto:${email}`} className="flex items-center gap-2 text-primary transition-colors hover:text-secondary">
-          <Mail className="h-3.5 w-3.5 text-gray-400" />
-          {email}
+          <Mail className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+          <span className="min-w-0 break-all">{email}</span>
         </a>
       )}
       {phone && (

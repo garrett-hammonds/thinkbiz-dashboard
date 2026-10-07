@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export default function AccessDeniedPage() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <main className="page-shell flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full bg-white shadow-card rounded-xl p-8 text-center border border-gray-100">
         <h1 className="text-2xl font-bold text-foreground mb-4">
           Access Denied

@@ -165,7 +165,7 @@ export default async function AttendancePage({
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Meets on {MEETING_DAY_LABELS[meetingDay]}s.{' '}
-            <span className="whitespace-nowrap">
+            <span className="sm:whitespace-nowrap">
               Tap a member to toggle them for this week.
             </span>
           </p>

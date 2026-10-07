@@ -47,7 +47,7 @@ export default async function DirectorInvitePage({
   const alreadyHasAccount = !!existingMember?.auth_user_id;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="page-shell bg-background">
       <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h1 className="text-3xl font-bold leading-snug text-foreground mb-2">
           You&apos;ve been invited as a Director
@@ -68,7 +68,7 @@ export default async function DirectorInvitePage({
 
 function InviteError({ message }: { message: string }) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="page-shell bg-background">
       <main className="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
         <h1 className="text-2xl font-bold text-foreground mb-4">Invite unavailable</h1>
         <p className="text-gray-600">{message}</p>

@@ -225,7 +225,7 @@ export function SidebarNav({
         <div
           className={[
             "border-t border-border",
-            large ? "px-4 py-4" : collapsed ? "px-2 py-3" : "px-3 py-3",
+            large ? "px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]" : collapsed ? "px-2 py-3" : "px-3 py-3",
           ].join(" ")}
         >
           {pinnedItems.map((item) => {

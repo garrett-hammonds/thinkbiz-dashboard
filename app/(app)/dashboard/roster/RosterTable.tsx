@@ -357,8 +357,8 @@ export function RosterTable({
                     href={`mailto:${r.email}`}
                     className="flex items-center gap-2 text-primary"
                   >
-                    <Mail className="h-3.5 w-3.5 text-gray-400" />
-                    {r.email}
+                    <Mail className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                    <span className="min-w-0 break-all">{r.email}</span>
                   </a>
                   {r.phone && (
                     <div className="flex items-center gap-2 text-gray-500">

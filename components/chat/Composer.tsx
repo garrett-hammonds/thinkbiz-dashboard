@@ -363,7 +363,7 @@ export function Composer({ directory, authUserId, channelName, draftKey, onSend 
   return (
     <div className="relative border-t border-gray-100 p-3">
       {suggestions.length > 0 && (
-        <div className="absolute bottom-full left-3 z-10 mb-1 w-72 overflow-hidden rounded-lg border border-gray-100 bg-white shadow-card">
+        <div className="absolute bottom-full left-3 z-10 mb-1 w-72 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border border-gray-100 bg-white shadow-card">
           {suggestions.map((m, i) => (
             <button
               key={m.id}

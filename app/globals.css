@@ -95,6 +95,49 @@
   }
 }
 
+/* iOS Safari / WKWebView zooms the page in whenever a form field under 16px
+   gets focus, and doesn't zoom back out on blur — the page is then left wider
+   than the screen until the member pinches it back. Most fields use `text-sm`
+   (~15px at the phone root size above), so on phones every text field is
+   bumped to the root size (>=17px). Unlayered, so it beats the Tailwind
+   utility; desktop sizing is untouched. `text-lg` fields keep their size. */
+@media (max-width: 1023px) {
+  input:not([type="checkbox"], [type="radio"], [type="range"]),
+  textarea,
+  select {
+    font-size: max(1rem, 16px);
+  }
+  input.text-lg,
+  select.text-lg {
+    font-size: 1.125rem;
+  }
+}
+
+/* Full-height shell for pages that render without the app's MobileTopBar
+   (login, apply, visitor check-in, onboarding, …). The native iOS shell draws
+   the page edge-to-edge (contentInset: never + viewport-fit=cover), so these
+   pages must clear the status bar / Dynamic Island themselves. Height uses the
+   dynamic viewport (100vh on iOS is taller than the visible area) minus the
+   bottom safe-area padding the native body already carries, so a short page
+   never scrolls by a few pixels. Insets are 0 in a normal browser tab. */
+html[data-native] {
+  --native-bottom-inset: env(safe-area-inset-bottom);
+}
+/* The `page-shell` utility itself is at the end of this file: Tailwind drops
+   a plain rule that directly follows an @utility block. */
+
+/* Pages that are a single screen with their own internal scrolling (chat:
+   channel list + message list + composer) mark their <main> data-fill-screen.
+   The content column is otherwise only min-height 100dvh, so it would grow
+   with the message history and the whole page would scroll instead of the
+   message list, leaving the composer far below the fold. Pin the column to
+   the visible screen so the top bar stays put, the main flex-1 takes what's
+   left, and only the inner lists scroll. */
+.app-column:has(> main[data-fill-screen]) {
+  height: calc(100dvh - var(--native-bottom-inset, 0px));
+  min-height: 0;
+}
+
 /* Recharts text. Sized here rather than via per-chart tick props so the
    mobile scale-up below lg leaves desktop charts exactly as they are:
    desktop keeps 12px ticks, while below lg ticks land in the 14-15px
@@ -140,4 +183,9 @@ html[data-native] button {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+}
+
+@utility page-shell {
+  min-height: calc(100dvh - var(--native-bottom-inset, 0px));
+  padding-top: env(safe-area-inset-top);
 }

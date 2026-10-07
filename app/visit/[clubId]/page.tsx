@@ -5,8 +5,8 @@ export const dynamic = 'force-dynamic';
 
 function VisitShell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gray-50">
-      <div className="w-full max-w-md bg-white rounded-xl border border-gray-100 shadow-card p-8 transition-all duration-200">
+    <main className="flex page-shell flex-col items-center justify-center px-4 pb-6 sm:px-6 bg-gray-50">
+      <div className="mt-6 w-full max-w-md bg-white rounded-xl border border-gray-100 shadow-card p-5 sm:p-8 transition-all duration-200">
         {children}
       </div>
     </main>

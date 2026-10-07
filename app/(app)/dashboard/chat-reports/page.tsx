@@ -156,7 +156,7 @@ export default async function ChatReportsPage() {
                 {r.details && (
                   <div>
                     <p className="text-sm font-medium text-gray-500">Reporter&apos;s note</p>
-                    <p className="whitespace-pre-wrap text-sm text-gray-900">{r.details}</p>
+                    <p className="whitespace-pre-wrap break-words text-sm text-gray-900">{r.details}</p>
                   </div>
                 )}
 

@@ -142,7 +142,7 @@ export function AppShell({
           (still capped by its own max-w-* and centered beyond it), so content
           spans the screen on tablets and any zoomed-out/desktop-fallback
           viewport rather than collapsing into a narrow, tiny column. */}
-      <div className="flex min-h-dvh w-full min-w-0 flex-col bg-background [&>main]:w-full">
+      <div className="app-column flex min-h-dvh w-full min-w-0 flex-col bg-background [&>main]:w-full">
         <MobileTopBar
           onOpen={() => setDrawerOpen(true)}
           isOpen={drawerOpen}
