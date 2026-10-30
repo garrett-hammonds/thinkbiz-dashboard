@@ -24,6 +24,58 @@ type Props = {
 
 const MENTION_TOKEN = /<@([0-9a-fA-F-]{36})>/g;
 
+// http(s):// and bare www. links. Only these two prefixes become links, so an
+// href can never carry another scheme (javascript:, data:, ...).
+const URL_PATTERN = /\b(?:https?:\/\/|www\.)[^\s<>"']+/gi;
+const TRAILING_PUNCTUATION = ".,!?;:'\"";
+
+// Sentence punctuation right after a link ("see example.com.") isn't part of
+// it, and neither is a closing paren with no opening paren inside the link.
+function trimLinkEnd(url: string): string {
+  let end = url.length;
+  while (end > 0) {
+    const ch = url[end - 1];
+    const head = url.slice(0, end);
+    if (TRAILING_PUNCTUATION.includes(ch)) {
+      end--;
+    } else if (ch === ")" && head.split("(").length < head.split(")").length) {
+      end--;
+    } else {
+      break;
+    }
+  }
+  return url.slice(0, end);
+}
+
+// Plain text with links turned into anchors. target="_blank" sends them to a
+// new tab on the web and to the system browser in the phone apps (see
+// NativeBridge).
+function linkify(text: string, keyPrefix: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  const regex = new RegExp(URL_PATTERN);
+  while ((match = regex.exec(text)) !== null) {
+    const url = trimLinkEnd(match[0]);
+    if (!url.includes(".")) continue;
+    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
+    parts.push(
+      <a
+        key={`${keyPrefix}-${match.index}`}
+        href={/^https?:\/\//i.test(url) ? url : `https://${url}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="break-all font-medium text-primary underline underline-offset-2 hover:text-secondary"
+      >
+        {url}
+      </a>
+    );
+    lastIndex = match.index + url.length;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts;
+}
+
 function renderContent(
   content: string,
   directoryMap: Map<string, ChatMember>
@@ -33,7 +85,9 @@ function renderContent(
   let match: RegExpExecArray | null;
   const regex = new RegExp(MENTION_TOKEN);
   while ((match = regex.exec(content)) !== null) {
-    if (match.index > lastIndex) parts.push(content.slice(lastIndex, match.index));
+    if (match.index > lastIndex) {
+      parts.push(...linkify(content.slice(lastIndex, match.index), `t${lastIndex}`));
+    }
     parts.push(
       <span
         key={`${match.index}-${match[1]}`}
@@ -44,7 +98,9 @@ function renderContent(
     );
     lastIndex = match.index + match[0].length;
   }
-  if (lastIndex < content.length) parts.push(content.slice(lastIndex));
+  if (lastIndex < content.length) {
+    parts.push(...linkify(content.slice(lastIndex), `t${lastIndex}`));
+  }
   return parts;
 }
 
@@ -99,6 +155,10 @@ export function MessageList({
   onBlock,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  // Whether the view should follow the newest message. True on open; cleared
+  // once the reader scrolls up, set again when they scroll back down.
+  const stickToBottom = useRef(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [pickerFor, setPickerFor] = useState<string | null>(null);
@@ -114,16 +174,44 @@ export function MessageList({
     const appended = lastMessageId !== prevLastId.current;
     const initialLoad = prevCount.current === 0 && messages.length > 0;
     if (initialLoad) {
+      stickToBottom.current = true;
       el.scrollTop = el.scrollHeight;
     } else if (appended) {
       const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200;
       const lastIsMine =
         messages.length > 0 && messages[messages.length - 1].member_id === me.memberId;
-      if (nearBottom || lastIsMine) el.scrollTop = el.scrollHeight;
+      if (nearBottom || lastIsMine) {
+        stickToBottom.current = true;
+        el.scrollTop = el.scrollHeight;
+      }
     }
     prevLastId.current = lastMessageId;
     prevCount.current = messages.length;
   }, [lastMessageId, messages, me.memberId]);
+
+  // Keep following the newest message whenever the list changes size. On
+  // phones the conversation pane is display:none until a channel is tapped, so
+  // the first scroll above runs at height 0 and lands at the top; the pane
+  // turning visible resizes the list and this puts it back at the bottom.
+  // Photos that finish loading after the first scroll are covered the same way.
+  useEffect(() => {
+    const el = scrollRef.current;
+    const content = contentRef.current;
+    if (!el || !content || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (stickToBottom.current) el.scrollTop = el.scrollHeight;
+    });
+    observer.observe(el);
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, []);
+
+  const onScroll = () => {
+    const el = scrollRef.current;
+    // A hidden pane reports 0 for everything; don't let that unstick it.
+    if (!el || el.clientHeight === 0) return;
+    stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  };
 
   const startEdit = (m: ChatMessage) => {
     setEditingId(m.id);
@@ -136,228 +224,230 @@ export function MessageList({
   };
 
   return (
-    <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
-      {loading && <p className="py-8 text-center text-sm text-gray-500">Loading messages…</p>}
+    <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto px-4 py-4">
+      <div ref={contentRef}>
+        {loading && <p className="py-8 text-center text-sm text-gray-500">Loading messages…</p>}
 
-      {!loading && hasMore && (
-        <div className="pb-2 text-center">
-          <button
-            onClick={onLoadEarlier}
-            disabled={loadingEarlier}
-            className="rounded-lg px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
-          >
-            {loadingEarlier ? "Loading…" : "Load earlier messages"}
-          </button>
-        </div>
-      )}
-
-      {!loading && messages.length === 0 && (
-        <p className="py-8 text-center text-sm text-gray-500">
-          No messages yet — be the first to say hello!
-        </p>
-      )}
-
-      {messages.map((m, i) => {
-        const sender = directoryMap.get(m.member_id);
-        const prev = messages[i - 1];
-        const newDay =
-          !prev || new Date(prev.created_at).toDateString() !== new Date(m.created_at).toDateString();
-        const mentionsMe = m.mentions?.includes(me.memberId);
-        const isMine = m.member_id === me.memberId;
-        const canDeleteThis = isMine || canModerate;
-        const bubbleClasses = mentionsMe
-          ? "border-accent/50 bg-accent/10"
-          : isMine
-            ? "border-primary/15 bg-primary/5"
-            : "border-gray-100 bg-slate-50";
-
-        const reactionGroups = new Map<string, string[]>();
-        for (const r of m.chat_message_reactions) {
-          reactionGroups.set(r.emoji, [...(reactionGroups.get(r.emoji) || []), r.member_id]);
-        }
-
-        return (
-          <div key={m.id}>
-            {newDay && (
-              <div className="my-4 flex items-center gap-3">
-                <div className="h-px flex-1 bg-gray-100" />
-                <span className="text-xs font-semibold text-gray-500">
-                  {dayLabel(m.created_at)}
-                </span>
-                <div className="h-px flex-1 bg-gray-100" />
-              </div>
-            )}
-
-            <div
-              className="group relative flex gap-3 px-2 py-1.5"
-              onClick={(e) => {
-                if ((e.target as HTMLElement).closest("button, a, textarea, input")) return;
-                setActionsFor(actionsFor === m.id ? null : m.id);
-              }}
+        {!loading && hasMore && (
+          <div className="pb-2 text-center">
+            <button
+              onClick={onLoadEarlier}
+              disabled={loadingEarlier}
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
             >
-              <Avatar member={sender} />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-baseline gap-x-2">
-                  <span className="min-w-0 break-words text-sm font-bold text-foreground">{memberName(sender)}</span>
-                  <span className="text-xs text-gray-500">{timeLabel(m.created_at)}</span>
-                  {m.edited_at && <span className="text-xs italic text-gray-400">(edited)</span>}
+              {loadingEarlier ? "Loading…" : "Load earlier messages"}
+            </button>
+          </div>
+        )}
+
+        {!loading && messages.length === 0 && (
+          <p className="py-8 text-center text-sm text-gray-500">
+            No messages yet — be the first to say hello!
+          </p>
+        )}
+
+        {messages.map((m, i) => {
+          const sender = directoryMap.get(m.member_id);
+          const prev = messages[i - 1];
+          const newDay =
+            !prev || new Date(prev.created_at).toDateString() !== new Date(m.created_at).toDateString();
+          const mentionsMe = m.mentions?.includes(me.memberId);
+          const isMine = m.member_id === me.memberId;
+          const canDeleteThis = isMine || canModerate;
+          const bubbleClasses = mentionsMe
+            ? "border-accent/50 bg-accent/10"
+            : isMine
+              ? "border-primary/15 bg-primary/5"
+              : "border-gray-100 bg-slate-50";
+
+          const reactionGroups = new Map<string, string[]>();
+          for (const r of m.chat_message_reactions) {
+            reactionGroups.set(r.emoji, [...(reactionGroups.get(r.emoji) || []), r.member_id]);
+          }
+
+          return (
+            <div key={m.id}>
+              {newDay && (
+                <div className="my-4 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-gray-100" />
+                  <span className="text-xs font-semibold text-gray-500">
+                    {dayLabel(m.created_at)}
+                  </span>
+                  <div className="h-px flex-1 bg-gray-100" />
+                </div>
+              )}
+
+              <div
+                className="group relative flex gap-3 px-2 py-1.5"
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest("button, a, textarea, input")) return;
+                  setActionsFor(actionsFor === m.id ? null : m.id);
+                }}
+              >
+                <Avatar member={sender} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="min-w-0 break-words text-sm font-bold text-foreground">{memberName(sender)}</span>
+                    <span className="text-xs text-gray-500">{timeLabel(m.created_at)}</span>
+                    {m.edited_at && <span className="text-xs italic text-gray-400">(edited)</span>}
+                  </div>
+
+                  {editingId === m.id ? (
+                    <div className="mt-1">
+                      <textarea
+                        value={editDraft}
+                        onChange={(e) => setEditDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            commitEdit();
+                          }
+                          if (e.key === "Escape") setEditingId(null);
+                        }}
+                        rows={2}
+                        autoFocus
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                      />
+                      <div className="mt-1 flex gap-2">
+                        <button
+                          onClick={commitEdit}
+                          className="rounded-lg bg-primary px-3 py-1 text-xs font-semibold text-white hover:bg-secondary"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="rounded-lg px-3 py-1 text-xs font-semibold text-gray-500 hover:bg-muted"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className={`mt-1 w-fit max-w-full rounded-lg rounded-tl-none border px-3 py-2 ${bubbleClasses}`}
+                    >
+                      {m.content && (
+                        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-900">
+                          {renderContent(m.content, directoryMap)}
+                        </p>
+                      )}
+                      <Attachments
+                        attachments={m.attachments ?? []}
+                        legacyImageUrl={m.image_url}
+                        hasContent={!!m.content}
+                      />
+                    </div>
+                  )}
+
+                  {reactionGroups.size > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {[...reactionGroups.entries()].map(([emoji, memberIds]) => {
+                        const mine = memberIds.includes(me.memberId);
+                        return (
+                          <button
+                            key={emoji}
+                            onClick={() => onToggleReaction(m.id, emoji)}
+                            title={memberIds
+                              .map((id) => memberName(directoryMap.get(id)))
+                              .join(", ")}
+                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors ${
+                              mine
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-gray-200 bg-white text-gray-700 hover:border-primary"
+                            }`}
+                          >
+                            <span>{emoji}</span>
+                            <span className="font-semibold">{memberIds.length}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
-                {editingId === m.id ? (
-                  <div className="mt-1">
-                    <textarea
-                      value={editDraft}
-                      onChange={(e) => setEditDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          commitEdit();
-                        }
-                        if (e.key === "Escape") setEditingId(null);
-                      }}
-                      rows={2}
-                      autoFocus
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                    />
-                    <div className="mt-1 flex gap-2">
-                      <button
-                        onClick={commitEdit}
-                        className="rounded-lg bg-primary px-3 py-1 text-xs font-semibold text-white hover:bg-secondary"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="rounded-lg px-3 py-1 text-xs font-semibold text-gray-500 hover:bg-muted"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
+                {/* Hover actions */}
+                {editingId !== m.id && (
                   <div
-                    className={`mt-1 w-fit max-w-full rounded-lg rounded-tl-none border px-3 py-2 ${bubbleClasses}`}
+                    className={`absolute -top-3 right-2 items-center gap-0.5 rounded-lg border border-gray-100 bg-white p-0.5 shadow-card group-hover:flex ${
+                      actionsFor === m.id ? "flex" : "hidden"
+                    }`}
                   >
-                    {m.content && (
-                      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-900">
-                        {renderContent(m.content, directoryMap)}
-                      </p>
-                    )}
-                    <Attachments
-                      attachments={m.attachments ?? []}
-                      legacyImageUrl={m.image_url}
-                      hasContent={!!m.content}
-                    />
-                  </div>
-                )}
-
-                {reactionGroups.size > 0 && (
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {[...reactionGroups.entries()].map(([emoji, memberIds]) => {
-                      const mine = memberIds.includes(me.memberId);
-                      return (
-                        <button
-                          key={emoji}
-                          onClick={() => onToggleReaction(m.id, emoji)}
-                          title={memberIds
-                            .map((id) => memberName(directoryMap.get(id)))
-                            .join(", ")}
-                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors ${
-                            mine
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-gray-200 bg-white text-gray-700 hover:border-primary"
-                          }`}
-                        >
-                          <span>{emoji}</span>
-                          <span className="font-semibold">{memberIds.length}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Hover actions */}
-              {editingId !== m.id && (
-                <div
-                  className={`absolute -top-3 right-2 items-center gap-0.5 rounded-lg border border-gray-100 bg-white p-0.5 shadow-card group-hover:flex ${
-                    actionsFor === m.id ? "flex" : "hidden"
-                  }`}
-                >
-                  <button
-                    onClick={() => setPickerFor(pickerFor === m.id ? null : m.id)}
-                    title="Add reaction"
-                    className="rounded p-1.5 text-gray-500 hover:bg-muted hover:text-foreground"
-                  >
-                    <SmilePlus className="h-4 w-4" />
-                  </button>
-                  {isMine && (
                     <button
-                      onClick={() => startEdit(m)}
-                      title="Edit message"
+                      onClick={() => setPickerFor(pickerFor === m.id ? null : m.id)}
+                      title="Add reaction"
                       className="rounded p-1.5 text-gray-500 hover:bg-muted hover:text-foreground"
                     >
-                      <Pencil className="h-4 w-4" />
+                      <SmilePlus className="h-4 w-4" />
                     </button>
-                  )}
-                  {!isMine && (
-                    <button
-                      onClick={() => {
-                        setActionsFor(null);
-                        onReport(m);
-                      }}
-                      title="Report message"
-                      aria-label="Report message"
-                      className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
-                    >
-                      <Flag className="h-4 w-4" />
-                    </button>
-                  )}
-                  {!isMine && (
-                    <button
-                      onClick={() => {
-                        setActionsFor(null);
-                        onBlock(m.member_id);
-                      }}
-                      title={`Block ${sender?.first_name || "this member"}`}
-                      aria-label={`Block ${sender?.first_name || "this member"}`}
-                      className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
-                    >
-                      <Ban className="h-4 w-4" />
-                    </button>
-                  )}
-                  {canDeleteThis && (
-                    <button
-                      onClick={() => onDelete(m.id)}
-                      title="Delete message"
-                      className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              )}
+                    {isMine && (
+                      <button
+                        onClick={() => startEdit(m)}
+                        title="Edit message"
+                        className="rounded p-1.5 text-gray-500 hover:bg-muted hover:text-foreground"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    )}
+                    {!isMine && (
+                      <button
+                        onClick={() => {
+                          setActionsFor(null);
+                          onReport(m);
+                        }}
+                        title="Report message"
+                        aria-label="Report message"
+                        className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Flag className="h-4 w-4" />
+                      </button>
+                    )}
+                    {!isMine && (
+                      <button
+                        onClick={() => {
+                          setActionsFor(null);
+                          onBlock(m.member_id);
+                        }}
+                        title={`Block ${sender?.first_name || "this member"}`}
+                        aria-label={`Block ${sender?.first_name || "this member"}`}
+                        className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Ban className="h-4 w-4" />
+                      </button>
+                    )}
+                    {canDeleteThis && (
+                      <button
+                        onClick={() => onDelete(m.id)}
+                        title="Delete message"
+                        className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
 
-              {pickerFor === m.id && (
-                <div className="absolute right-2 top-6 z-10 flex gap-1 rounded-lg border border-gray-100 bg-white p-1.5 shadow-card">
-                  {REACTION_EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      onClick={() => {
-                        onToggleReaction(m.id, emoji);
-                        setPickerFor(null);
-                      }}
-                      className="rounded p-1 text-lg hover:bg-muted"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              )}
+                {pickerFor === m.id && (
+                  <div className="absolute right-2 top-6 z-10 flex gap-1 rounded-lg border border-gray-100 bg-white p-1.5 shadow-card">
+                    {REACTION_EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={() => {
+                          onToggleReaction(m.id, emoji);
+                          setPickerFor(null);
+                        }}
+                        className="rounded p-1 text-lg hover:bg-muted"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
