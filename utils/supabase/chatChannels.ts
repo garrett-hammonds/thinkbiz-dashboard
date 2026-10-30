@@ -21,7 +21,7 @@ export async function getChannelList(
     await Promise.all([
       supabase
         .from('chat_channels')
-        .select('id, name, description, club_id, is_dm')
+        .select('id, name, description, club_id, is_dm, created_by')
         .order('name'),
       supabase
         .from('chat_channel_members')
@@ -51,8 +51,19 @@ export async function getChannelList(
       joined: c.club_id
         ? !!member.is_admin || c.club_id === member.current_club_id
         : joinedIds.has(c.id),
+      created_by: (c.created_by as string | null) ?? null,
     };
   });
 
   return { channels, dmPartners: [...dmPartnerMap.values()] };
+}
+
+// Total unread chat messages for the menu badge (sum of chat_unread_counts()).
+// Errors (e.g. chat migration not applied yet) just read as 0.
+export async function getChatUnreadTotal(supabase: SupabaseClient): Promise<number> {
+  const { data } = await supabase.rpc('chat_unread_counts');
+  return ((data as { unread: number }[] | null) ?? []).reduce(
+    (sum, row) => sum + Number(row.unread),
+    0,
+  );
 }

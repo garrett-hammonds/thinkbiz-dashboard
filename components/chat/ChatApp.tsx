@@ -1,15 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Hash, Lock, Plus, Compass, ArrowLeft, LogOut, User, Ban } from "lucide-react";
+import { Hash, Lock, Plus, Compass, ArrowLeft, LogOut, User, Ban, Users, Trash2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
-import { createChannel, getMyChatChannels, notifyChatMessage } from "@/app/actions/chat";
+import {
+  createChannel,
+  deleteChannel,
+  getMyChatChannels,
+  notifyChatMessage,
+} from "@/app/actions/chat";
 import { setDmBlock } from "@/app/actions/chatSafety";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { Modal } from "@/components/Modal";
+import { useReportChatUnread } from "@/components/nav/chatUnread";
 import { MessageList } from "./MessageList";
 import { Composer } from "./Composer";
 import { ReportMessageModal } from "./ReportMessageModal";
+import { ChannelMembersModal } from "./ChannelMembersModal";
 import type { ChatAttachment, ChatChannel, ChatMember, ChatMessage, ChatReaction, Me } from "./types";
 import { memberName } from "./types";
 
@@ -71,6 +78,9 @@ export function ChatApp({
   const [showCreate, setShowCreate] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  // Open channel whose members dialog is showing.
+  const [membersFor, setMembersFor] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [reportFor, setReportFor] = useState<ChatMessage | null>(null);
   // Members I've blocked: their messages are hidden from me everywhere in chat
   // (filtered in the queries, the realtime handler and the render below).
@@ -94,6 +104,20 @@ export function ChatApp({
   }, [directory, extraMembers]);
 
   const activeChannel = channels.find((c) => c.id === activeId) ?? null;
+  const membersChannel = membersFor ? channels.find((c) => c.id === membersFor) ?? null : null;
+
+  // Directors and admins create channels; a channel's creator (or any admin)
+  // manages its members and can delete it. The database enforces the same
+  // rules (chat_can_manage_channel).
+  const canCreate = me.isAdmin || me.isDirector;
+  const canManage = (c: ChatChannel | null) =>
+    !!c && !c.club_id && !c.is_dm && (me.isAdmin || c.created_by === me.memberId);
+
+  // Keep the menu badge in step with what this screen shows.
+  const reportUnread = useReportChatUnread();
+  useEffect(() => {
+    reportUnread(Object.values(unread).reduce((sum, n) => sum + (n || 0), 0));
+  }, [unread, reportUnread]);
 
   const markRead = useCallback(
     async (channelId: string) => {
@@ -404,10 +428,54 @@ export function ChatApp({
         is_dm: false,
         dm_partner_id: null,
         joined: true,
+        created_by: me.memberId,
       },
     ]);
     setShowCreate(false);
     selectChannel(result.channelId);
+    // Straight on to adding people, the usual next step for a new channel.
+    setMembersFor(result.channelId);
+  };
+
+  const handleDeleteChannel = async (channel: ChatChannel) => {
+    if (
+      deleting ||
+      !window.confirm(
+        `Delete #${channel.name}? This removes the channel and all of its messages for everyone. This can't be undone.`
+      )
+    ) {
+      return;
+    }
+    setDeleting(true);
+    const result = await deleteChannel(channel.id);
+    setDeleting(false);
+    if (!result.success) {
+      window.alert(result.message || "Could not delete the channel. Please try again.");
+      return;
+    }
+    setChannels((prev) => prev.filter((c) => c.id !== channel.id));
+    setUnread((u) => {
+      if (!(channel.id in u)) return u;
+      const next = { ...u };
+      delete next[channel.id];
+      return next;
+    });
+    if (activeIdRef.current === channel.id) {
+      setMessages([]);
+      setLoadingMessages(true);
+      setActiveId(clubChannel?.id ?? null);
+      setMobileView("list");
+    }
+  };
+
+  // Members just added through the members dialog: make sure their names and
+  // headshots render even if they're outside this viewer's directory.
+  const handleMembersAdded = (added: ChatMember[]) => {
+    setExtraMembers((prev) => {
+      const seen = new Set([...directory.map((m) => m.id), ...prev.map((m) => m.id)]);
+      const fresh = added.filter((m) => !seen.has(m.id));
+      return fresh.length > 0 ? [...prev, ...fresh] : prev;
+    });
   };
 
   const dmPartnerId = activeChannel?.is_dm ? activeChannel.dm_partner_id : null;
@@ -553,7 +621,7 @@ export function ChatApp({
       >
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
           <h2 className="text-base font-bold text-foreground">Member Chat</h2>
-          {me.isAdmin && (
+          {canCreate && (
             <button
               onClick={() => setShowCreate(true)}
               title="Create channel"
@@ -636,6 +704,28 @@ export function ChatApp({
                   )
                 )}
               </div>
+              {canManage(activeChannel) && (
+                <div className="ml-auto flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setMembersFor(activeChannel.id)}
+                    className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
+                  >
+                    <Users className="h-4 w-4" aria-hidden="true" />
+                    Members
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteChannel(activeChannel)}
+                    disabled={deleting}
+                    title="Delete channel"
+                    aria-label="Delete channel"
+                    className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+              )}
               {dmPartnerId && (
                 <button
                   type="button"
@@ -654,6 +744,7 @@ export function ChatApp({
             </div>
 
             <MessageList
+              key={activeChannel.id}
               messages={visibleMessages}
               me={me}
               directoryMap={directoryMap}
@@ -712,7 +803,7 @@ export function ChatApp({
           {browseable.length === 0 ? (
             <p className="py-4 text-sm text-gray-500">
               No other channels to join right now.
-              {me.isAdmin ? " Create one with the + button." : ""}
+              {canCreate ? " Create one with the + button." : ""}
             </p>
           ) : (
             <ul className="divide-y divide-gray-100">
@@ -738,7 +829,16 @@ export function ChatApp({
         </Modal>
       )}
 
-      {/* Create channel modal (admins) */}
+      {membersChannel && (
+        <ChannelMembersModal
+          channel={membersChannel}
+          meId={me.memberId}
+          onClose={() => setMembersFor(null)}
+          onAdded={handleMembersAdded}
+        />
+      )}
+
+      {/* Create channel modal (directors and admins) */}
       {showCreate && (
         <Modal title="Create a channel" onClose={() => setShowCreate(false)}>
           <form action={handleCreate} className="flex flex-col gap-4">

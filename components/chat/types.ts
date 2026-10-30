@@ -15,6 +15,14 @@ export type ChatChannel = {
   is_dm: boolean;
   dm_partner_id: string | null;
   joined: boolean;
+  // Who created an open channel. The creator (and any admin) manages its
+  // members and can delete it.
+  created_by: string | null;
+};
+
+// A member as listed in a channel's members dialog.
+export type ChannelMemberOption = ChatMember & {
+  club_label: string | null;
 };
 
 export type ChatReaction = {
