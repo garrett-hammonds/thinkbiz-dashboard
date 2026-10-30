@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { getMemberForUser } from "@/utils/supabase/getMember";
 import { getSelectedClubId } from "@/utils/activeClub";
+import { getChatUnreadTotal } from "@/utils/supabase/chatChannels";
 import { cookies } from "next/headers";
 import { AppShell } from "@/components/nav/AppShell";
 import type { SwitcherClub } from "@/components/ClubSwitcher";
@@ -50,14 +51,7 @@ export default async function AppLayout({
       activeClubId = await getSelectedClubId();
     }
 
-    // Errors (e.g. chat migration not applied yet) just leave the badge at 0
-    const { data: unreadRows } = await supabase.rpc("chat_unread_counts");
-    if (unreadRows) {
-      chatUnread = (unreadRows as { unread: number }[]).reduce(
-        (sum, row) => sum + Number(row.unread),
-        0,
-      );
-    }
+    chatUnread = await getChatUnreadTotal(supabase);
   }
 
   const cookieStore = await cookies();

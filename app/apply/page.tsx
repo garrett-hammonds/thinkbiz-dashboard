@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { submitApplicationAction } from './submitApplication';
 import { createClient } from '../../utils/supabase/client';
 import { Turnstile } from '@/components/Turnstile';
+import { CLUB_PICKER_FIELDS, clubOptionLabel, sortClubOptions, type ClubPickerOption } from '@/utils/clubLabel';
 
 const CAPTCHA_ENABLED = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
@@ -21,7 +22,7 @@ export default function ApplyPage() {
     });
     const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [clubs, setClubs] = useState<{ id: string, name: string }[]>([]);
+    const [clubs, setClubs] = useState<ClubPickerOption[]>([]);
     const [isLoadingClubs, setIsLoadingClubs] = useState(true);
     const [captchaToken, setCaptchaToken] = useState<string | null>(null);
     const onVerify = useCallback((token: string | null) => setCaptchaToken(token), []);
@@ -29,9 +30,9 @@ export default function ApplyPage() {
     useEffect(() => {
         const fetchClubs = async () => {
             const supabase = createClient();
-            const { data, error } = await supabase.from('clubs').select('id, name').order('name');
+            const { data, error } = await supabase.from('clubs').select(CLUB_PICKER_FIELDS);
             if (data) {
-                setClubs(data);
+                setClubs(sortClubOptions(data as ClubPickerOption[]));
             } else if (error) {
                 console.error('Error fetching clubs:', error);
             }
@@ -39,6 +40,8 @@ export default function ApplyPage() {
         };
         fetchClubs();
     }, []);
+
+    const selectedClub = clubs.find((c) => c.id === formData.clubId) ?? null;
 
     const handleNext = () => {
         const { firstName, lastName, email, phone, clubId } = formData;
@@ -117,10 +120,11 @@ export default function ApplyPage() {
                             <label className="block text-sm font-semibold text-gray-900 mb-2">Club Name</label>
                             <select name="clubId" value={formData.clubId} onChange={handleChange} className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors" required disabled={isLoadingClubs}>
                                 <option value="">{isLoadingClubs ? 'Loading clubs…' : 'Select a club'}</option>
-                                {clubs.map((club, idx) => (
-                                    <option key={idx} value={club.id}>{club.name}</option>
+                                {clubs.map((club) => (
+                                    <option key={club.id} value={club.id}>{clubOptionLabel(club)}</option>
                                 ))}
                             </select>
+                            {selectedClub && <SelectedClub club={selectedClub} />}
                         </div>
                         <button onClick={handleNext} className="w-full bg-primary text-white hover:bg-secondary rounded-lg px-6 py-3 font-semibold transition-colors duration-200 focus-visible:outline-primary disabled:opacity-50 mt-4">Next step</button>
                     </div>
@@ -163,5 +167,19 @@ export default function ApplyPage() {
                 )}
             </div>
         </main>
+    );
+}
+
+// Confirms the pick with where and when the club meets, so applicants can tell
+// apart clubs that share a city and meeting time.
+function SelectedClub({ club }: { club: ClubPickerOption }) {
+    const when = [club.day_of_week, club.start_time].filter(Boolean).join(' at ');
+    return (
+        <div className="mt-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+            {club.display_name && <p className="font-semibold text-gray-900">{club.display_name}</p>}
+            {when && <p>Meets {when}</p>}
+            {club.venue_name && <p>{club.venue_name}</p>}
+            {club.address && <p>{club.address}</p>}
+        </div>
     );
 }

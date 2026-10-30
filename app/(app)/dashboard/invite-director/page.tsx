@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { getMemberForUser } from '@/utils/supabase/getMember';
 import InviteDirectorForm from '@/components/InviteDirectorForm';
+import { CLUB_PICKER_FIELDS, sortClubOptions, type ClubPickerOption } from '@/utils/clubLabel';
 
 export default async function InviteDirectorPage() {
   const supabase = await createClient();
@@ -15,8 +16,7 @@ export default async function InviteDirectorPage() {
 
   const { data: clubs } = await supabase
     .from('clubs')
-    .select('id, name')
-    .order('name');
+    .select(CLUB_PICKER_FIELDS);
 
   return (
       <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -25,7 +25,7 @@ export default async function InviteDirectorPage() {
           Generate a single signed invite link for a new Club Director. The recipient sets up
           their profile and password without needing approval.
         </p>
-        <InviteDirectorForm clubs={clubs ?? []} />
+        <InviteDirectorForm clubs={sortClubOptions((clubs ?? []) as ClubPickerOption[])} />
       </main>
   );
 }
