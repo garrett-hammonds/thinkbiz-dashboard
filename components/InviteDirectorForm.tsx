@@ -2,13 +2,9 @@
 
 import { useState } from 'react';
 import { createDirectorInvite } from '@/app/actions/createDirectorInvite';
+import { clubOptionLabel, type ClubPickerOption } from '@/utils/clubLabel';
 
-interface Club {
-  id: string;
-  name: string;
-}
-
-export default function InviteDirectorForm({ clubs }: { clubs: Club[] }) {
+export default function InviteDirectorForm({ clubs }: { clubs: ClubPickerOption[] }) {
   const [email, setEmail] = useState('');
   const [clubId, setClubId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,7 +59,7 @@ export default function InviteDirectorForm({ clubs }: { clubs: Club[] }) {
           >
             <option value="">Select a club</option>
             {clubs.map((club) => (
-              <option key={club.id} value={club.id}>{club.name}</option>
+              <option key={club.id} value={club.id}>{clubOptionLabel(club)}</option>
             ))}
           </select>
         </div>
