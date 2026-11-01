@@ -743,8 +743,12 @@ export function ChatApp({
               )}
             </div>
 
+            {/* Keyed so a channel switch starts a fresh list (scroll position,
+                edit state). The composer below is keyed too; the two keys must
+                differ — React matches siblings by key, and giving both the
+                bare channel id made it keep every old list in the DOM. */}
             <MessageList
-              key={activeChannel.id}
+              key={`list-${activeChannel.id}`}
               messages={visibleMessages}
               me={me}
               directoryMap={directoryMap}
@@ -773,7 +777,7 @@ export function ChatApp({
               <ComposerNotice>You can&apos;t send messages in this conversation.</ComposerNotice>
             ) : (
               <Composer
-                key={activeChannel.id}
+                key={`composer-${activeChannel.id}`}
                 directory={directory}
                 authUserId={me.authUserId}
                 channelName={activeChannel.name}
