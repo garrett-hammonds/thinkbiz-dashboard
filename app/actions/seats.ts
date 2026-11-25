@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { getMemberForUser } from '@/utils/supabase/getMember';
 import { getActiveClubId } from '@/utils/activeClub';
+import { isPaywallExempt } from '@/utils/membership';
 
 export interface AssignSeatResult {
   success: boolean;
@@ -53,11 +54,22 @@ export async function assignSeat(
 
   const { data: target } = await admin
     .from('members')
-    .select('id, current_club_id, is_active')
+    .select(
+      'id, current_club_id, is_active, subscription_status, is_admin, club_director, billing_exempt',
+    )
     .eq('id', targetId)
     .maybeSingle();
   if (!target || !target.is_active || target.current_club_id !== clubId) {
     return { success: false, message: 'That member isn’t on this club’s roster.' };
+  }
+  // A canceled membership gives its seat back (see the
+  // trg_members_reopen_seats_on_cancel trigger), so don't hand out a new one
+  // until they resubscribe. Releasing a seat is always allowed.
+  if (targetSeatId && target.subscription_status === 'canceled' && !isPaywallExempt(target)) {
+    return {
+      success: false,
+      message: 'This member’s membership is canceled. They need to resubscribe before taking a seat.',
+    };
   }
 
   if (targetSeatId) {

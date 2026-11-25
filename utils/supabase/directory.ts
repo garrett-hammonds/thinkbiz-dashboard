@@ -45,6 +45,49 @@ const MEMBER_FIELDS = 'id, first_name, last_name, member_headshot';
 const LIST_FIELDS =
   `${MEMBER_FIELDS}, company_name, title, club_seat, current_club_id`;
 
+// Who the membership directory lists: active members, minus anyone whose
+// membership subscription was canceled. A cancellation doesn't deactivate the
+// member (they can still sign in and resubscribe), so `is_active` alone kept
+// former members in the directory. Admins, directors and billing-exempt
+// members aren't billed and are always listed.
+const LISTED_FILTER =
+  'subscription_status.is.null,subscription_status.neq.canceled,' +
+  'billing_exempt.is.true,club_director.is.true,is_admin.is.true';
+
+// The industry seat each member holds in their own club. The seat roster
+// (club_seats, assigned by directors) is the source of truth; the legacy
+// members.club_seat text column is no longer maintained.
+async function seatsByMember(
+  admin: SupabaseClient,
+  memberIds?: string[],
+): Promise<Map<string, { clubId: string; industry: string }[]>> {
+  let query = admin
+    .from('club_seats')
+    .select('club_id, industry, member_id')
+    .eq('status', 'filled')
+    .not('member_id', 'is', null);
+  if (memberIds) query = query.in('member_id', memberIds);
+  const { data } = await query;
+
+  const seats = new Map<string, { clubId: string; industry: string }[]>();
+  for (const s of data || []) {
+    const list = seats.get(s.member_id as string) || [];
+    list.push({ clubId: s.club_id as string, industry: s.industry as string });
+    seats.set(s.member_id as string, list);
+  }
+  return seats;
+}
+
+function withSeat<T extends DirectoryListMember>(
+  member: T,
+  seats: Map<string, { clubId: string; industry: string }[]>,
+): T {
+  const seat = (seats.get(member.id) || []).find(
+    (s) => s.clubId === member.current_club_id,
+  );
+  return { ...member, club_seat: seat?.industry ?? null };
+}
+
 const PROFILE_FIELDS =
   `${LIST_FIELDS}, bio, short_bio, core_skills, website_url, linkedin_url, ` +
   'booking_calendar_url, google_review_url, email, phone_number, member_since';
@@ -85,39 +128,50 @@ export async function getClubDirectory(
   return (data as DirectoryMember[]) || [];
 }
 
-// Every active member, for the membership directory. Directory visibility is
+// Every listed member (see LISTED_FILTER), for the membership directory. Directory visibility is
 // intentionally platform-wide (any member can look up any other member); the
 // club filter is a UI default, not an access boundary.
 export async function getMemberDirectory(): Promise<DirectoryListMember[]> {
   const admin = adminClient();
   if (!admin) return [];
 
-  const { data } = await admin
-    .from('members')
-    .select(LIST_FIELDS)
-    .eq('is_active', true)
-    .order('first_name')
-    .order('last_name');
+  const [{ data }, seats] = await Promise.all([
+    admin
+      .from('members')
+      .select(LIST_FIELDS)
+      .eq('is_active', true)
+      .or(LISTED_FILTER)
+      .order('first_name')
+      .order('last_name'),
+    seatsByMember(admin),
+  ]);
 
-  return (data as DirectoryListMember[] | null) || [];
+  return ((data as DirectoryListMember[] | null) || []).map((m) =>
+    withSeat(m, seats),
+  );
 }
 
-// One member's directory profile. Returns null for unknown or inactive members
-// so removed members drop out of the directory immediately.
+// One member's directory profile. Returns null for unknown, inactive or
+// canceled members so they drop out of the directory immediately.
 export async function getDirectoryProfile(
   memberId: string,
 ): Promise<DirectoryProfile | null> {
   const admin = adminClient();
   if (!admin) return null;
 
-  const { data } = await admin
-    .from('members')
-    .select(PROFILE_FIELDS)
-    .eq('id', memberId)
-    .eq('is_active', true)
-    .maybeSingle();
+  const [{ data }, seats] = await Promise.all([
+    admin
+      .from('members')
+      .select(PROFILE_FIELDS)
+      .eq('id', memberId)
+      .eq('is_active', true)
+      .or(LISTED_FILTER)
+      .maybeSingle(),
+    seatsByMember(admin, [memberId]),
+  ]);
 
-  return (data as DirectoryProfile | null) || null;
+  const profile = (data as DirectoryProfile | null) || null;
+  return profile ? withSeat(profile, seats) : null;
 }
 
 // All clubs, for the directory's club + geographic-area filters.
