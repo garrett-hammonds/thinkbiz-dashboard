@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 
@@ -13,12 +14,22 @@ import { createClient as createAdminClient } from '@supabase/supabase-js';
 //
 // We only auto-link when `auth_user_id IS NULL` so we never overwrite a
 // member already bound to a different auth user.
-export async function getMemberForUser(supabase: SupabaseClient, user: User) {
-  const { data: byId } = await supabase
+//
+// The row is read once per page render: the (app) layout and the page under it
+// share a client (utils/supabase/server.ts), and cache() keys on that client,
+// so the second caller reuses the first one's query. Outside a render (server
+// actions) cache() does not memoize, so a read after a write is always fresh.
+const memberByAuthId = cache(async (supabase: SupabaseClient, authUserId: string) => {
+  const { data } = await supabase
     .from('members')
     .select('*')
-    .eq('auth_user_id', user.id)
+    .eq('auth_user_id', authUserId)
     .maybeSingle();
+  return data;
+});
+
+export async function getMemberForUser(supabase: SupabaseClient, user: User) {
+  const byId = await memberByAuthId(supabase, user.id);
 
   if (byId) return byId;
 
