@@ -26,6 +26,7 @@ export type DirectoryProfile = DirectoryListMember & {
   website_url: string | null;
   linkedin_url: string | null;
   booking_calendar_url: string | null;
+  google_review_url: string | null;
   email: string | null;
   phone_number: string | null;
   member_since: string | null;
@@ -46,7 +47,7 @@ const LIST_FIELDS =
 
 const PROFILE_FIELDS =
   `${LIST_FIELDS}, bio, short_bio, core_skills, website_url, linkedin_url, ` +
-  'booking_calendar_url, email, phone_number, member_since';
+  'booking_calendar_url, google_review_url, email, phone_number, member_since';
 
 // Service-role client. Member-visibility RLS only lets a member read their own
 // row, so directory reads (which need to list fellow members) run with the

@@ -7,6 +7,7 @@ import {
   detectHost,
   getPlugin,
   hostAdapter,
+  inAppPath,
   platform,
   NATIVE_SCHEME,
   PREF_PUSH_ASKED,
@@ -88,13 +89,25 @@ export default function NativeBridge() {
       ).then((h) => handles.push(h));
     }
 
-    // Notification taps open the route the server put in data.url.
+    // Notification taps open the screen the push is about. The server puts the
+    // destination in data.url, as a path or as a full link to this app; both
+    // resolve to a path here. (Requiring a leading "/" used to drop every full
+    // link, which left the tap on whatever screen the app opened to.)
     const push = getPlugin('FirebaseMessaging');
     if (push) {
+      const appOrigins = [window.location.origin];
+      try {
+        if (process.env.NEXT_PUBLIC_SITE_URL) {
+          appOrigins.push(new URL(process.env.NEXT_PUBLIC_SITE_URL).origin);
+        }
+      } catch {
+        // A malformed site URL just means only our own origin counts.
+      }
       Promise.resolve(
         push.addListener('notificationActionPerformed', ({ notification }) => {
-          const target = notification.data?.url || '/dashboard';
-          if (target.startsWith('/')) window.location.assign(target);
+          const target = inAppPath(notification.data?.url, appOrigins) || '/dashboard';
+          const current = window.location.pathname + window.location.search + window.location.hash;
+          if (target !== current) window.location.assign(target);
         }),
       ).then((h) => handles.push(h));
 

@@ -12,6 +12,7 @@ export const FIELD_LIMITS = {
   email: 254, // RFC 5321 max
   phone: 40,
   shortText: 200, // company, title, single-line fields
+  url: 500, // links that carry long query strings (Google review links)
   longText: 5000, // bio, notes
   skills: 1000,
 } as const;

@@ -112,6 +112,10 @@ export function ChatApp({
   const canCreate = me.isAdmin || me.isDirector;
   const canManage = (c: ChatChannel | null) =>
     !!c && !c.club_id && !c.is_dm && (me.isAdmin || c.created_by === me.memberId);
+  // Club chats show their roster to everyone in them (read-only: it follows
+  // the club). Open channels show members to whoever manages them.
+  const canSeeMembers = (c: ChatChannel | null) =>
+    canManage(c) || (!!c && !!c.club_id && !c.is_dm && c.joined);
 
   // Keep the menu badge in step with what this screen shows.
   const reportUnread = useReportChatUnread();
@@ -704,7 +708,7 @@ export function ChatApp({
                   )
                 )}
               </div>
-              {canManage(activeChannel) && (
+              {canSeeMembers(activeChannel) && (
                 <div className="ml-auto flex shrink-0 items-center gap-1">
                   <button
                     type="button"
@@ -714,16 +718,18 @@ export function ChatApp({
                     <Users className="h-4 w-4" aria-hidden="true" />
                     Members
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteChannel(activeChannel)}
-                    disabled={deleting}
-                    title="Delete channel"
-                    aria-label="Delete channel"
-                    className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                  >
-                    <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  </button>
+                  {canManage(activeChannel) && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteChannel(activeChannel)}
+                      disabled={deleting}
+                      title="Delete channel"
+                      aria-label="Delete channel"
+                      className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  )}
                 </div>
               )}
               {dmPartnerId && (
@@ -837,6 +843,7 @@ export function ChatApp({
         <ChannelMembersModal
           channel={membersChannel}
           meId={me.memberId}
+          isAdmin={me.isAdmin}
           onClose={() => setMembersFor(null)}
           onAdded={handleMembersAdded}
         />

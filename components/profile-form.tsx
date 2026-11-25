@@ -13,6 +13,7 @@ export interface ProfileMember {
   website_url?: string | null;
   linkedin_url?: string | null;
   booking_calendar_url?: string | null;
+  google_review_url?: string | null;
   core_skills?: string[] | null;
   bio?: string | null;
 }
@@ -154,6 +155,22 @@ export default function ProfileForm({ member, prefs }: { member: ProfileMember; 
               defaultValue={member?.booking_calendar_url || ''}
               className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 focus:ring-2 focus:ring-primary focus:outline-none"
             />
+          </div>
+
+          <div>
+            <label htmlFor="google_review_url" className="block text-sm font-medium text-gray-900 mb-2">Google Review Link</label>
+            <input
+              type="url"
+              id="google_review_url"
+              name="google_review_url"
+              defaultValue={member?.google_review_url || ''}
+              placeholder="https://g.page/r/..."
+              aria-describedby="google_review_url_hint"
+              className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 focus:ring-2 focus:ring-primary focus:outline-none"
+            />
+            <p id="google_review_url_hint" className="mt-2 text-sm text-gray-500">
+              The link from your Google Business Profile that asks for a review. Members see it on your directory profile.
+            </p>
           </div>
 
           <div>

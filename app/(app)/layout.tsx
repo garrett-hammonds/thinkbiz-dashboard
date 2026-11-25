@@ -39,19 +39,23 @@ export default async function AppLayout({
 
     // Admins get a club switcher so they can manage any club's director
     // surfaces, not just their own. Everyone else stays on their own club.
-    if (isAdmin) {
-      const { data: clubsData } = await supabase
-        .from("clubs")
-        .select("id, name, display_name")
-        .order("name");
-      switcherClubs = (clubsData ?? []).map((c) => ({
+    // The club list and the unread count don't depend on each other, so they
+    // go out together instead of one after the other.
+    const [clubsResult, unread, selectedClubId] = await Promise.all([
+      isAdmin
+        ? supabase.from("clubs").select("id, name, display_name").order("name")
+        : null,
+      getChatUnreadTotal(supabase),
+      isAdmin ? getSelectedClubId() : null,
+    ]);
+    if (clubsResult) {
+      switcherClubs = (clubsResult.data ?? []).map((c) => ({
         id: c.id,
         label: c.display_name || c.name,
       }));
-      activeClubId = await getSelectedClubId();
+      activeClubId = selectedClubId;
     }
-
-    chatUnread = await getChatUnreadTotal(supabase);
+    chatUnread = unread;
   }
 
   const cookieStore = await cookies();

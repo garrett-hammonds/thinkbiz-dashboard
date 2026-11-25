@@ -94,6 +94,7 @@ export async function deleteAccount(formData: FormData): Promise<DeleteAccountRe
       website_url: null,
       linkedin_url: null,
       booking_calendar_url: null,
+      google_review_url: null,
       member_headshot: null,
       core_skills: null,
       stripe_customer_id: null,
