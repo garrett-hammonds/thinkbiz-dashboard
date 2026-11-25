@@ -190,6 +190,27 @@ export function absolute(url: string): string {
   return new URL(url, window.location.origin).toString();
 }
 
+// Turns the `url` a push carries into an in-app path, or null when it does not
+// point into the app. The server sends full links (emails and browser push
+// share them), so both "/chat?channel=…" and
+// "https://app.thinkbiz.solutions/chat?channel=…" must resolve. The app's own
+// host can differ from the link's (a preview build, or NEXT_PUBLIC_SITE_URL on
+// another domain), so `appOrigins` lists every origin that counts as "ours".
+export function inAppPath(raw: string | null | undefined, appOrigins: string[]): string | null {
+  const value = (raw || '').trim();
+  if (!value) return null;
+  if (value.startsWith('/')) return value.startsWith('//') ? null : value;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+  if (!appOrigins.includes(url.origin)) return null;
+  return url.pathname + url.search + url.hash;
+}
+
 // The custom scheme the shells register (mirrors capacitor.config.ts in
 // thinkbiz-mobile-app). Used when a flow that had to leave the WebView (Stripe
 // Checkout in the system browser) wants to hand focus back to the app.

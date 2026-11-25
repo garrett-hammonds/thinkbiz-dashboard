@@ -37,7 +37,7 @@ export function buildFcmMessage(tokens: string[], payload: PushPayload) {
   return {
     tokens,
     notification: { title: payload.title, body: payload.body || '' },
-    data: { url: payload.url || '/dashboard', tag },
+    data: { url: appPath(payload.url), tag },
     apns: {
       payload: {
         aps: {
@@ -54,6 +54,22 @@ export function buildFcmMessage(tokens: string[], payload: PushPayload) {
       },
     },
   };
+}
+
+// Callers pass full links (the same URL goes into emails and browser push).
+// The shell navigates inside its own WebView, so it gets the path only: that
+// keeps a tap working whatever host the installed app loads, and on app
+// versions whose tap handler only accepted paths.
+export function appPath(url: string | undefined): string {
+  const value = (url || '').trim();
+  if (!value) return '/dashboard';
+  if (value.startsWith('/')) return value.startsWith('//') ? '/dashboard' : value;
+  try {
+    const parsed = new URL(value);
+    return parsed.pathname + parsed.search + parsed.hash || '/dashboard';
+  } catch {
+    return '/dashboard';
+  }
 }
 
 type Messaging = import('firebase-admin/messaging').Messaging;

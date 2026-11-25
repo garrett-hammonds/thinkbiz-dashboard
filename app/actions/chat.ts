@@ -141,31 +141,69 @@ async function managedChannel(channelId: string, member: { id: string; is_admin?
   return channel as { id: string; name: string; created_by: string | null };
 }
 
-// Who is in a channel and who can still be added (every active member, across
-// all clubs — directory visibility is platform-wide), for the members dialog.
+// A club's chat the viewer may look at the roster of: their own club's, or any
+// club's for admins. Membership there is the club roster itself
+// (members.current_club_id), so the dialog is read-only.
+async function viewableClubChannel(
+  channelId: string,
+  member: { id: string; is_admin?: boolean | null; current_club_id?: string | null },
+) {
+  if (!UUID.test(channelId)) return null;
+  const admin = createAdminClient();
+  const { data: channel } = await admin
+    .from('chat_channels')
+    .select('id, name, club_id, is_dm')
+    .eq('id', channelId)
+    .maybeSingle();
+  if (!channel || !channel.club_id || channel.is_dm) return null;
+  if (!member.is_admin && channel.club_id !== member.current_club_id) return null;
+  return channel as { id: string; name: string; club_id: string };
+}
+
+// Who is in a channel, for the members dialog.
+//  * Open channel (its creator or an admin): the members, plus everyone who can
+//    still be added (every active member, across all clubs — directory
+//    visibility is platform-wide).
+//  * Club chat (that club's members, or an admin): the club's active roster,
+//    read-only — people come and go with the club itself.
 export async function getChannelMembers(channelId: string): Promise<
-  | { success: true; members: ChannelMemberOption[]; candidates: ChannelMemberOption[] }
+  | {
+      success: true;
+      members: ChannelMemberOption[];
+      candidates: ChannelMemberOption[];
+      // False for club chats: the list mirrors the club roster.
+      editable: boolean;
+      // Open channels only: new members are added to it automatically.
+      autoJoin: boolean;
+    }
   | { success: false; message: string }
 > {
   const session = await signedInMember();
   if (!session) return { success: false, message: 'Not authenticated' };
 
   const channel = await managedChannel(channelId, session.member);
-  if (!channel) {
-    return { success: false, message: 'Only the channel’s creator or an admin can manage its members' };
+  const clubChannel = channel ? null : await viewableClubChannel(channelId, session.member);
+  if (!channel && !clubChannel) {
+    return { success: false, message: 'You can’t see the members of this channel' };
   }
 
   const admin = createAdminClient();
-  const [{ data: rows }, { data: active }, { data: clubs }] = await Promise.all([
-    admin.from('chat_channel_members').select('member_id').eq('channel_id', channel.id),
+  const [{ data: rows }, { data: active }, { data: clubs }, { data: flags }] = await Promise.all([
+    channel
+      ? admin.from('chat_channel_members').select('member_id').eq('channel_id', channel.id)
+      : Promise.resolve({ data: [] as { member_id: string }[] }),
     admin
       .from('members')
       .select('id, first_name, last_name, member_headshot, current_club_id')
       .eq('is_active', true),
     admin.from('clubs').select('id, name, display_name'),
+    // Read on its own so a database without the auto_join column yet (code
+    // deployed ahead of the migration) still lists members.
+    channel
+      ? admin.from('chat_channels').select('auto_join').eq('id', channel.id).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
-  const memberIds = new Set((rows ?? []).map((r) => r.member_id as string));
   const clubLabel = new Map(
     (clubs ?? []).map((c) => [c.id as string, (c.display_name || c.name || null) as string | null]),
   );
@@ -182,11 +220,71 @@ export async function getChannelMembers(channelId: string): Promise<
     `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`);
 
   const activeRows = (active ?? []) as Row[];
+
+  if (clubChannel) {
+    return {
+      success: true,
+      members: activeRows
+        .filter((m) => m.current_club_id === clubChannel.club_id)
+        // The club is the dialog's subject; repeating it on every row is noise.
+        .map((m) => ({ ...toOption(m), club_label: null }))
+        .sort(byName),
+      candidates: [],
+      editable: false,
+      autoJoin: false,
+    };
+  }
+
+  const memberIds = new Set((rows ?? []).map((r) => r.member_id as string));
   return {
     success: true,
     members: activeRows.filter((m) => memberIds.has(m.id)).map(toOption).sort(byName),
     candidates: activeRows.filter((m) => !memberIds.has(m.id)).map(toOption).sort(byName),
+    editable: true,
+    autoJoin: !!(flags as { auto_join?: boolean } | null)?.auto_join,
   };
+}
+
+// Turns "add new members automatically" on or off for an open channel. Admins
+// only: it decides where every future member lands. Turning it on also adds
+// the active members who aren't in the channel yet, so the channel really does
+// hold everyone from that point.
+export async function setChannelAutoJoin(
+  channelId: string,
+  autoJoin: boolean,
+): Promise<{ success: true; added: number } | { success: false; message: string }> {
+  const session = await signedInMember();
+  if (!session) return { success: false, message: 'Not authenticated' };
+  if (!session.member.is_admin) {
+    return { success: false, message: 'Only admins can change this setting' };
+  }
+  const channel = await managedChannel(channelId, session.member);
+  if (!channel) return { success: false, message: 'This setting is only for open channels' };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from('chat_channels')
+    .update({ auto_join: !!autoJoin })
+    .eq('id', channel.id);
+  if (error) {
+    console.error('[setChannelAutoJoin] update failed:', error);
+    return { success: false, message: 'Could not save the setting. Please try again.' };
+  }
+
+  let added = 0;
+  if (autoJoin) {
+    const { data: active } = await admin.from('members').select('id').eq('is_active', true);
+    const rows = (active ?? []).map((m) => ({ channel_id: channel.id, member_id: m.id as string }));
+    if (rows.length > 0) {
+      const { data: inserted, error: addError } = await admin
+        .from('chat_channel_members')
+        .upsert(rows, { onConflict: 'channel_id,member_id', ignoreDuplicates: true })
+        .select('member_id');
+      if (addError) console.error('[setChannelAutoJoin] catch-up failed:', addError);
+      added = inserted?.length ?? 0;
+    }
+  }
+  return { success: true, added };
 }
 
 // Adds members to an open channel the viewer manages and lets them know by

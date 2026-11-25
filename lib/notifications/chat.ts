@@ -80,7 +80,8 @@ export async function dispatchChatMessageNotifications(messageId: string): Promi
   const channelName = channel.name || 'a channel';
   const snippet = snippetOf(message.content, message.image_url, message.attachments);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-  const url = channel.is_dm ? `${siteUrl}/chat?channel=${channel.id}` : `${siteUrl}/chat`;
+  // Every chat push opens the conversation it is about, not just the chat home.
+  const url = `${siteUrl}/chat?channel=${channel.id}`;
 
   // Direct message: one recipient, no channel to name, and mention semantics
   // don't add anything in a 1:1 — a single sender-titled push covers it.

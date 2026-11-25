@@ -25,6 +25,7 @@ export async function updateProfile(formData: FormData) {
   const website_url = formData.get('website_url') as string;
   const linkedin_url = formData.get('linkedin_url') as string;
   const booking_calendar_url = formData.get('booking_calendar_url') as string;
+  const google_review_url = ((formData.get('google_review_url') as string) || '').trim();
   const member_headshot = formData.get('member_headshot') as string;
 
   const skillsStr = formData.get('core_skills') as string;
@@ -36,7 +37,7 @@ export async function updateProfile(formData: FormData) {
     try { new URL(url); return true; } catch { return false; }
   };
 
-  if (!isValidUrl(website_url) || !isValidUrl(linkedin_url) || !isValidUrl(booking_calendar_url)) {
+  if (!isValidUrl(website_url) || !isValidUrl(linkedin_url) || !isValidUrl(booking_calendar_url) || !isValidUrl(google_review_url)) {
     return { success: false, message: 'Please provide valid URLs including http:// or https://' };
   }
 
@@ -47,6 +48,7 @@ export async function updateProfile(formData: FormData) {
     ['Website URL', website_url, 'shortText'],
     ['LinkedIn URL', linkedin_url, 'shortText'],
     ['Booking calendar URL', booking_calendar_url, 'shortText'],
+    ['Google review link', google_review_url, 'url'],
     ['Core skills', skillsStr, 'skills'],
   ]);
   if (lengthError) {
@@ -62,6 +64,7 @@ export async function updateProfile(formData: FormData) {
       website_url,
       linkedin_url,
       booking_calendar_url,
+      google_review_url: google_review_url || null,
       member_headshot,
       core_skills
     })

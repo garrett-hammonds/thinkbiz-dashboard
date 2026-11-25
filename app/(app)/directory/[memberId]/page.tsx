@@ -13,6 +13,7 @@ import {
   MapPin,
   Phone,
   Sparkles,
+  Star,
 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/server';
 import { getMemberForUser } from '@/utils/supabase/getMember';
@@ -167,6 +168,14 @@ export default async function DirectoryProfilePage({
       label: 'Book a meeting',
       value: 'Open calendar',
       href: toHref(profile.booking_calendar_url),
+    });
+  }
+  if (profile.google_review_url) {
+    contacts.push({
+      icon: <Star className="h-5 w-5" aria-hidden="true" />,
+      label: 'Google review',
+      value: 'Leave a review',
+      href: toHref(profile.google_review_url),
     });
   }
 
